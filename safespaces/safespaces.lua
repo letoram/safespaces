@@ -85,7 +85,19 @@ function safespaces(args)
 -- stage, otherwise we might be running in windowed mode and want to compose on
 -- the window we already have
 	if (dev.display) then
-		wait_for_display(dev);
+
+-- Nolock option spawns the vr_bridge first, THEN waits for the display to
+-- appear. This is needed for devices where the display requires some kind
+-- of activation command that is driver dependent.
+		if (not dev.prelaunch) then
+			wait_for_display(dev);
+		else
+			WM:setup_vr(
+			function(device, comb, l, r)
+				warning("VR device activated");
+				wait_for_display(dev, comb);
+			end, dev);
+		end
 
 	elseif (not dev.disable_vrbridge) then
 		WM:setup_vr(
@@ -102,7 +114,7 @@ function safespaces(args)
 	WM.dev = dev;
 end
 
-wait_for_display = function(dev)
+wait_for_display = function(dev, dstid)
 	warning("waiting for display: " .. dev.display);
 	local old_tick = safespaces_clock_pulse;
 	local refresh_timer = 200;
@@ -119,12 +131,17 @@ wait_for_display = function(dev)
 -- when a display arrives that match the known/desired display,
 -- map the VR combiner stage to it
 	display_action = function(name, id)
+		warning(string.format("display(%s): detected", name));
 		if (string.match(name, dev.display)) then
 			safespaces_clock_pulse = old_tick;
-			WM:setup_vr(
-			function(ctx, vid)
-				map_video_display(vid, id);
-			end, dev);
+			if (dstid) then
+				map_video_display(dstid, id);
+			else
+				WM:setup_vr(
+				function(ctx, vid)
+					map_video_display(vid, id);
+				end, dev);
+			end
 		end
 	end
 end
