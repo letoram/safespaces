@@ -80,7 +80,7 @@ uniform vec2 lens_center;
 uniform vec2 viewport_scale;
 uniform float warp_scale;
 uniform vec4 distortion;
-uniform vec4 aberration;
+uniform vec3 aberration;
 
 varying vec2 texco;
 
@@ -89,11 +89,12 @@ void main()
 	vec2 r = (texco * viewport_scale - lens_center) / warp_scale;
 	float r_mag = length(r);
 
-	vec2 r_displaced = r *
-		(distortion.w + distortion.z * r_mag +
+	vec2 r_displaced = r * (
+		distortion.w +
+		distortion.z * r_mag +
 		distortion.y * r_mag * r_mag +
-		distortion.x * r_mag * r_mag * r_mag);
-
+		distortion.x * r_mag * r_mag * r_mag
+	);
 	r_displaced *= warp_scale;
 
 	vec2 tc_r = (lens_center + aberration.r * r_displaced) / viewport_scale;
@@ -180,18 +181,6 @@ local function vr_distortion(vrctx, model)
 		image_shader(vrctx.rt_l, shid);
 		image_shader(vrctx.rt_r, shid);
 -- set so that the txcos reflect screen position
-		image_set_txcos(vrctx.rt_l,
-		{0.0, 0.0,
-		 0.5, 0.0,
-		 0.5, 1.0,
-		 0.0, 1.0
-		});
-	image_set_txcos(vrctx.rt_r,
-		{0.5, 0.0,
-		 1.0, 0.0,
-		 1.0, 1.0,
-		 0.5, 1.0
-		});
 	end
 end
 
