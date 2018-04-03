@@ -23,6 +23,9 @@ return {
 		["DOWN"] = "layers/current/models/selected/child_swap=-1",
 		["."] = "layers/current/models/selected/split=1",
 		[","] = "layers/current/models/selected/split=-1",
+		["F5"] = "hmd/reset",
+		["F9"] = "hmd/step_ipd=-0.01",
+		["F10"] = "hmd/step_ipd=0.01",
 
 --		["DELETE"] = "layers/current/models/selected/destroy",
 		["BACKSPACE"] = "layers/current/models/selected/destroy",

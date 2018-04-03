@@ -33,6 +33,7 @@ configured. There are a few default device presets to chose from:
 * basic - takes whatever the arcan vr bridge provides as the default
 * monoscopic - normal "3D" with mouse and keyboard
 * psvr - waits for a PSVR HMD display to appear before activating
+* rift - used for oculus rift
 * simulated - works like monoscopic but outputs with a faked profile
 
 The next section, configuration, goes into detail on how these can be extended
@@ -63,6 +64,17 @@ bindings. Note that any collisions between bindings defined for a device vs.
 bindings defined for the global config will be biased in favor of the global
 config and a warning printed to stdout for each collision.
 
+## In- use Configuration
+
+Though the config.lua (+ whatever device and space specific bindings that you use) specify the different active keybindings, there are some that are particularly important to know about.
+
+hmd/reset : default bound to meta+F5, this will define your
+current viewing angle as your default 'staring comfortably
+forward' position. This can be used to reorient yourself and to
+work around drift in the orientation sensor tracking.
+
+hmd/step\_ipd=0.1 or -0.1 : default bound to meta+F9,meta+F10, and is used to change the virtual relative eye distance.
+
 ## Troubleshooting
 
 There are a number of moving parts that can go wrong here, depending on the
@@ -75,6 +87,12 @@ The next big part (for VR use) is the presence of the 'arcan\_vr' binary. Not
 only do you have to build it manually (arcan git repository, tools/vrbridge)
 but you also have to set the path to it in the arcan configuration database,
 see the README.md for the vrbridge tool on details for that.
+
+## Device Specific Notes
+
+For Oculus Rift CV1 (and possibly others), the display doesn't register as such
+immediately. It may be necessary to take the headset on and off a few times
+before it actually appears as a new display.
 
 ## Roadmap / Status
 

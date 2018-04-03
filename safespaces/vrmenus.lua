@@ -838,7 +838,6 @@ local function hmd_config(wnd, opts)
 	description = "Set the current orientation as the new base reference",
 	kind = "action",
 	handler = function()
-		active_display():message("sent reset event");
 		reset_target(wnd.vr_state.vid);
 	end
 	},
@@ -850,10 +849,25 @@ local function hmd_config(wnd, opts)
 	validator = gen_valid_num(0.0, 1.0),
 	handler = function(ctx, val)
 		local num = tonumber(val);
-		wnd.ipd = num;
-		move3d_model(wnd.vr_state.l, -wnd.ipd * 0.5, 0, 0);
-		move3d_model(wnd.vr_state.r, wnd.ipd * 0.5, 0, 0);
+		wnd.vr_state.meta.ipd = num;
+		move3d_model(wnd.vr_state.l, -wnd.vr_state.meta.ipd * 0.5, 0, 0);
+		move3d_model(wnd.vr_state.r, wnd.vr_state.meta.ipd * 0.5, 0, 0);
+		warning(string.format("change ipd: %f", wnd.vr_state.meta.ipd));
 	end
+	},
+	{
+		name = "step_ipd",
+		label = "Step IPD",
+		kind = "value",
+		description = "relatively nudge the 'interpupilary distance'",
+		validator = gen_valid_num(-1.0, 1.0),
+		handler = function(ctx, val)
+			local num = tonumber(val);
+			wnd.vr_state.meta.ipd = wnd.vr_state.meta.ipd + num;
+			move3d_model(wnd.vr_state.l, -wnd.vr_state.meta.ipd * 0.5, 0, 0);
+			move3d_model(wnd.vr_state.r, wnd.vr_state.meta.ipd * 0.5, 0, 0);
+			warning(string.format("change ipd: %f", wnd.vr_state.meta.ipd));
+		end
 	},
 	{
 	name = "distortion",

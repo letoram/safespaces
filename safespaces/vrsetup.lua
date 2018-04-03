@@ -86,7 +86,8 @@ varying vec2 texco;
 
 void main()
 {
-	vec2 r = (texco * viewport_scale - lens_center) / warp_scale;
+	vec2 r = (texco * viewport_scale - lens_center);
+	r /= warp_scale;
 	float r_mag = length(r);
 
 	vec2 r_displaced = r * (
@@ -164,23 +165,26 @@ local function vr_distortion(vrctx, model)
 	else
 		local md = vrctx.meta;
 		local shid = vrctx.shid;
-		local center_x = 0.5 * md.horizontal - 0.5 * md.hsep;
-		local center_y = 0.5 * md.hsep;
-		local warp_scale = center_x > center_y and center_x or center_y;
-		local view_fs = 0.5 * md.horizontal;
-		local view_ft = md.vertical;
+		local viewport = {md.horizontal * 0.5, md.vertical};
+		local center_l = {viewport[1] - 0.5 * md.hsep, md.vpos};
+		local center_r = {md.hsep * 0.5, md.vpos};
+		local warp_scale = center_l[1] > center_r[1] and center_l[1] or center_r[1];
 		local dst = md.distortion;
 		local abb = md.abberation;
 
-		shader_uniform(shid, "lens_center", "ff", center_x, center_y);
+		shader_uniform(shid, "lens_center", "ff", center_l[1], center_l[2]);
 		shader_uniform(shid, "warp_scale", "f", warp_scale);
-		shader_uniform(shid, "viewport_scale", "ff", view_fs, view_ft);
+		shader_uniform(shid, "viewport_scale", "ff", viewport[1], viewport[2]);
  		shader_uniform(shid, "distortion", "ffff", dst[1], dst[2], dst[3], dst[4]);
 		shader_uniform(shid, "aberration", "fff", abb[1], abb[2], abb[3]);
 
+		local rsh = shader_ugroup(shid);
+		shader_uniform(rsh, "lens_center", "ff", center_r[1], center_r[2]);
+
 		image_shader(vrctx.rt_l, shid);
-		image_shader(vrctx.rt_r, shid);
--- set so that the txcos reflect screen position
+		image_shader(vrctx.rt_r, rsh);
+		image_set_txcos_default(vrctx.rt_l);
+		image_set_txcos_default(vrctx.rt_r);
 	end
 end
 
@@ -275,8 +279,8 @@ local function setup_vr_display(wnd, callback, opts)
 
 -- ipd is set by moving l_eye to -sep, r_eye to +sep
 		if (md.ipd) then
-			move3d_model(cam_l, -md.ipd * 0.5, 0, 0);
-			move3d_model(cam_r, md.ipd * 0.5, 0, 0);
+			move3d_model(cam_l, md.ipd * 0.5, 0, 0);
+			move3d_model(cam_r, -md.ipd * 0.5, 0, 0);
 		end
 
 -- the distortion model has three options, no distortion, fragment shader
