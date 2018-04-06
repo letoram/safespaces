@@ -64,16 +64,38 @@ bindings. Note that any collisions between bindings defined for a device vs.
 bindings defined for the global config will be biased in favor of the global
 config and a warning printed to stdout for each collision.
 
+The list if device- configuration fields are as follows:
+
+    -- example.lua
+		return {
+			display = '^MYDEV', -- full lua string matching pattern
+      oversample_w = 1.0, -- composition buffer width * display width
+			oversample_h = 1.0, -- composition buffer height * display height
+			distortion_model = 'basic', -- basic (OpenHMD universal shader or none)
+      width = 1024, -- display width in pixels
+			height = 512, -- display height in pixels
+			center = 0.001, -- vertical center in meters
+      grab = false, -- disable window mode input grab
+			horizontal =
+
+		bindings = {
+		["k"] = "/path/from/API.md"
+		}
+		}
+
 ## In- use Configuration
 
-Though the config.lua (+ whatever device and space specific bindings that you use) specify the different active keybindings, there are some that are particularly important to know about.
+Though the config.lua (+ whatever device and space specific bindings that you
+use) specify the different active keybindings, there are some that are
+particularly important to know about.
 
 hmd/reset : default bound to meta+F5, this will define your
 current viewing angle as your default 'staring comfortably
 forward' position. This can be used to reorient yourself and to
 work around drift in the orientation sensor tracking.
 
-hmd/step\_ipd=0.1 or -0.1 : default bound to meta+F9,meta+F10, and is used to change the virtual relative eye distance.
+hmd/step\_ipd=0.1 or -0.1 : default bound to meta+F9,meta+F10, and is used to
+change the virtual relative eye distance.
 
 ## Troubleshooting
 

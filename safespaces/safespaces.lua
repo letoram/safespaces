@@ -7,7 +7,6 @@ local SYMTABLE;
 local wait_for_display;
 
 function safespaces(args)
-	toggle_mouse_grab(MOUSE_GRABON);
 	system_load("suppl.lua")();
 	local vrsetup = system_load("vrsetup.lua")();
 

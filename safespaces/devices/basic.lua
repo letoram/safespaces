@@ -10,6 +10,11 @@ return {
 	oversample_h = 1.4,
 	hmdarg = "ohmd_index=-1",
 	bindings = {
+	["F1"] = "mouse=Selected",
+	["F2"] = "mouse=View",
+	["F3"] = "mouse=Scale",
+	["F4"] = "mouse=Rotate",
+	["INSERT"] = "toggle_grab",
 	["R"] = "hmd/reset"
 	}
 };

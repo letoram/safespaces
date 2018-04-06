@@ -7,6 +7,7 @@ return {
 		["F1"] = "mouse=Selected",
 		["F2"] = "mouse=View",
 		["F3"] = "mouse=Scale",
-		["F4"] = "mouse=Rotate"
+		["F4"] = "mouse=Rotate",
+		["INSERT"] = "toggle_grab"
 	}
 };

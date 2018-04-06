@@ -71,6 +71,18 @@ return function(WM)
 });
 
 	table.insert(WM.menu,
+	{
+		name = "toggle_grab",
+		label = "Toggle Grab",
+		kind = "action",
+		description = "Toggle device grab on/off",
+		handler = function()
+			toggle_mouse_grab();
+		end
+	}
+	);
+
+	table.insert(WM.menu,
 {
 	name = "shutdown",
 	kind = "action",
