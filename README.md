@@ -17,6 +17,10 @@ the freenode IRC network.
 
 ## Setting up
 
+NOTE - For running 'natively' (no X etc.) on Linux systems, stick to kernels
+that are <= 4.14 for the time being, some change in 4.15 broke the support
+for scanout on VR displays.
+
 You can start simply with:
 
     arcan /path/to/safespaces

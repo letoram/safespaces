@@ -351,14 +351,6 @@ local function model_settings_menu(wnd, layer, model)
 		end
 	},
 	{
-		name = "child_release",
-		label = "Split",
-		kind = "value",
-		description = "Release the relative child",
-		handler = function(ctx, res)
-		end
-	},
-	{
 		name = "rotate",
 		label = "Rotate",
 		description = "Set the current model-layer relative rotation",

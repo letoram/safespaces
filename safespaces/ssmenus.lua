@@ -58,13 +58,14 @@ return function(WM)
 	label = "Mouse",
 	set = {"Selected", "View", "Scale", "Rotate"},
 	handler = function(ctx, val)
-		if (val == "Selected") then
+		val = string.lower(val);
+		if (val == "selected") then
 			WM.mouse_handler = nil;
-		elseif (val == "View") then
+		elseif (val == "view") then
 			WM.mouse_handler = rotate_camera;
-		elseif (val == "Scale") then
+		elseif (val == "scale") then
 			WM.mouse_handler = scale_selected;
-		elseif (val == "Rotate") then
+		elseif (val == "rotate") then
 			WM.mouse_handler = rotate_selected;
 		end
 	end

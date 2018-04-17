@@ -1,52 +1,139 @@
-This will soon be completed with the real API documentation,
-for now, dig through vrmenus.lua and ssmenus.lua for the raw
-definition.
+# API
 
-Keybindings, device configuration, workspace definitions etc.
-all follow the same file-system like structure, known from
-Durden and so on.
+Similarly to how configuration works in [Durden](http://durden.arcan-fe.com),
+configuration, scripting and scene definitions in _Safespaces_ work via a
+simple virtual filesystem, and all user actions point into this filesystem
+in one way or another. All of the paths except for the "System Windows"
+category are also _shared_ with the _vrviewer_ tool in Durden.
 
-Add a layer:
-    "layers/add=mylayer"
+Conceptually, Safespaces is divided into one or many _spaces_ where only
+one _space_ can be active at any one time. Each space have zero or many
+layers.
 
-Then modify its settings:
-    "layers/layer_bg/settings/depth=50.0",
-    "layers/layer_bg/settings/radius=50.0",
-    "layers/layer_bg/settings/fixed=true",
-    "layers/layer_bg/settings/ignore=true"
+To map to normal window management concepts, a space can be thought of as
+a more radical 'workspace', and a layer as a 'tag' or group of addressable
+windows.
 
-Adding a cube model in the background layer with individually
-textured faces:
+# System Windows
 
-    "layers/layer_bg/add_model/cube=bg",
-    "layers/layer_bg/models/bg/faces/1/source=box/0.png", -- +x
-    "layers/layer_bg/models/bg/faces/2/source=box/1.png", -- -x
-    "layers/layer_bg/models/bg/faces/3/source=box/2.png", -- +y
-    "layers/layer_bg/models/bg/faces/4/source=box/3.png", -- -y
-    "layers/layer_bg/models/bg/faces/5/source=box/4.png", -- +z
-    "layers/layer_bg/models/bg/faces/6/source=box/5.png", -- -z
+     /toggle_grab : when arcan is running in windowed mode, activating
+                   this path toggles mouse grab on / off which might be
+                   needed in som environments.
 
-Adding a foreground layer where we do our work:
+     /shutdown : immediately kill all clients and terminate
 
-		"layers/add=fg",
-    "layers/layer_fg/settings/active_scale=3",
-    "layers/layer_fg/settings/inactive_scale=1",
-    "layers/layer_fg/settings/depth=2.0",
-    "layers/layer_fg/settings/radius=10.0",
-    "layers/layer_fg/settings/spacing=0.0",
-    "layers/layer_fg/settings/vspacing=0.1",
+     /mouse=
+          selected : input forwarded to selected model
+          view : input modifies camera orientation
+          scale : input modifies focus selected model scale
+          rotate : input modifies selected model orientation
 
-Spawn a terminal:
+# Device Control ( /hmd )
 
-    "layers/layer_fg/terminal",
+This path has controls for dynamically tuning active HMD devices.
 
-Set it to focus:
+    /hmd/reset : resets the orientation and marks your current position
+                 as the "origo / looking straight ahead" state
+    /hmd/ipd=f : override the IPD setting (distance between eyes)
+    /hmd/step_ipd=f : adjust the IPD relative to its current value
+		/hmd/distortion=
+                    none : disable distortion step
+                    basic : shader based OpenHMD distortion model
 
-		"layers/layer_fg/focus"
+# Space Control ( /space )
 
-A hidden model that only gets activated and swapped into focus on
-connect/disconnect and uses side by side stereoscopic separation
+This path is special, and populated by globbing the spaces subdirectory
+for matching profiles. To load, specify /space/spacename.lua and it will
+activate.
 
-    "layers/layer_fg/add_model/rectangle=sbsvid",
-    "layers/layer_fg/models/sbsvid/connpoint/reveal=sbsvid",
-    "layers/layer_fg/models/sbsvid/stereoscopic=sbs"
+# Layer Creation ( /layers )
+
+Layers provide a positional anchor to which you attach and group models.
+Only one layer can be selected at a time, with one model as input focus.  A
+layouter determines the positioning and window management strategy for the
+models attached to the layer.
+
+    /layers/grow_shrink=f : increment or decrement the layouter spacing
+    /layers/push_pull=f : move the anchor closer or further away
+    /layers/add=name : create a new layer with the specified (unique) name
+    /layers/layer_name : name comes from the add=name call and is a submenu
+    /layers/current : refers to the currently selected layer.
+
+# Layer Access
+
+Each individual layer accessed through /layers/layer\_name or /layers/current
+has the following possible submenus, actions and values:
+
+    focus : set the layer as having input focus
+    add_model (see Model Creation below)
+    terminal : add a rectangle model tied to a new terminal group
+    swap=i : swap model to the left (< 0) or to the right (> 0) into focus
+    cycle=i : rotate models n steps on the left (< 0) or right (> 0) side
+    destroy : delete the layer and all associated models
+    opacity=f : (0..1) set the layer relative opacity, default=1 (opaque)
+    nudge=f : move the layer anchor relative to the current position
+    models/ : subdirectory of all attached models
+    settings/ : parameters that affect layout and model attachment
+
+# Layer Settings
+
+    depth=f : set the distance from the anchor to the viewer
+    radius=f : set the circle that windows will be positioned through
+    spacing=f : set the spacing between window along the longitude
+    vspacing=f : set the spacing between windows along the y axis
+    active_scale=f : set the scale factor for the selected window
+    inactive_scale=f : set the scale factor for the inactive windows
+    fixed=b : (true | false) disable (=true) or enable autolayouting
+    ignore : ignore this layer when stepping input focus
+
+# Model Creation
+
+These paths are relative to layers/layer\_name where name is what you
+specified when adding it (e.g. /layers/add=background) would become:
+
+    /layers/layer_background/add_model/primitive=
+
+You can also specify them relative to the currently selected layer:
+
+    /layers/current/add_model/primitive=
+
+Substitute primitive with one out of:
+
+    pointcloud, sphere, hemisphere, rectangle, cylinder, halfcylinder, cube
+
+And a unique name in order to reference the model later, similarly to how
+layers were created and referenced.
+
+# Model Access
+
+The model is accessed via a layer (/layers/current/ or /layers/layer\_name)
+within the models subdirectory (/layers/current/models/model_n) either by
+the model name /layers/current/models/name/ or relative to the current
+selection via /layers/current/models/selected/
+
+    child_swap=i
+    destroy
+    rotate=fff
+    spin=fff
+    scale=f
+    opacity=f
+    curvature=f
+    merge_collapse
+    flip=b (true | false)
+    stereoscopic=
+                 none, sbs, sbs-rl, oau, oau-rl
+    faces/
+    connpoint/
+    source_inv=s
+    source=s
+
+# Connection Points
+
+Any model can have its contents (map) be defined dynamically via a 'connection
+point' that an external client can access via ARCAN\_CONNPOINT=name. This is
+activated via the model access (see above) connpoint subdirectory.
+
+    replace=s : the connection point contents will permanently map to the model
+    temporary=s : when the connection point closes, the previous map will return
+    reveal=s : show the model only when the connection point isn't active
+    reveal_focus=s : like reveal, but automatically set input focus
