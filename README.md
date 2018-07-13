@@ -13,7 +13,10 @@ Tread carefully and try with non-VR device profiles first. Keep a vomit-bucket
 nearby.
 
 The project and related development is discussed in the #arcan IRC channel on
-the freenode IRC network.
+the freenode IRC network. **Note** the development of the scripts herein are
+mainly done as part of the 'vrviewer' tool (durden/tools/vrviewer in the
+source tree) [Durden](https://github.com/letoram/durden) and only mirrored
+and tracked here in "release bursts" when there are are things to synch. 
 
 ## Setting up
 
