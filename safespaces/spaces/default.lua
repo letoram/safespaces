@@ -8,12 +8,12 @@ return {
 
 -- a little extra work to define a multi- mapped textured cube
 "layers/layer_bg/add_model/cube=bg",
-"layers/layer_bg/models/bg/faces/1/source=box/0.png", -- +x
-"layers/layer_bg/models/bg/faces/2/source=box/1.png", -- -x
-"layers/layer_bg/models/bg/faces/3/source=box/2.png", -- +y
-"layers/layer_bg/models/bg/faces/4/source=box/3.png", -- -y
-"layers/layer_bg/models/bg/faces/5/source=box/4.png", -- +z
-"layers/layer_bg/models/bg/faces/6/source=box/5.png", -- -z
+"layers/layer_bg/models/bg/faces/1/source=skyboxes/corona/0.png", -- +x
+"layers/layer_bg/models/bg/faces/2/source=skyboxes/corona/1.png", -- -x
+"layers/layer_bg/models/bg/faces/3/source=skyboxes/corona/2.png", -- +y
+"layers/layer_bg/models/bg/faces/4/source=skyboxes/corona/3.png", -- -y
+"layers/layer_bg/models/bg/faces/5/source=skyboxes/corona/4.png", -- +z
+"layers/layer_bg/models/bg/faces/6/source=skyboxes/corona/5.png", -- -z
 
 -- an interactive foreground layer with a transparent terminal
 "layers/add=fg",
