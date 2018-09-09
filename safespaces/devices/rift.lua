@@ -19,6 +19,7 @@ return {
 -- lens_distance = ..
 -- eye_display = ..
 -- ipd = ..
+-- rotate_display = {"cw90", "ccw90", "180"}
 -- distortion = {v1, v2, v3, v4}
 -- abberation = {v1, v2, v3}
 };
