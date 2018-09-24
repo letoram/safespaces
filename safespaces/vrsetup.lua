@@ -175,7 +175,7 @@ local function vr_distortion(vrctx, model)
 		shader_uniform(shid, "lens_center", "ff", center_l[1], center_l[2]);
 		shader_uniform(shid, "warp_scale", "f", warp_scale);
 		shader_uniform(shid, "viewport_scale", "ff", viewport[1], viewport[2]);
- 		shader_uniform(shid, "distortion", "ffff", dst[1], dst[2], dst[3], dst[4]);
+		shader_uniform(shid, "distortion", "ffff", dst[1], dst[2], dst[3], dst[4]);
 		shader_uniform(shid, "aberration", "fff", abb[1], abb[2], abb[3]);
 
 		local rsh = shader_ugroup(shid);
@@ -224,43 +224,43 @@ local function setup_vr_display(wnd, callback, opts)
 		local halfh = disph * 0.5;
 		local diff = dispw - halfh;
 
-                local invert_eye_dimension = false;
-                local rotation = 0;
-                local pos_l_eye_x = 0;
-                local pos_l_eye_y = 0;
-                local pos_r_eye_x = halfw;
-                local pos_r_eye_y = 0;
-                local eye_w = halfw;
-                local eye_h = disph;
+		local invert_eye_dimension = false;
+		local rotation = 0;
+		local pos_l_eye_x = 0;
+		local pos_l_eye_y = 0;
+		local pos_r_eye_x = halfw;
+		local pos_r_eye_y = 0;
+		local eye_w = halfw;
+		local eye_h = disph;
 
-                if ("ccw90" == opts.display_rotate ) then
-                        rotation = 90;
-                        invert_eye_dimension = true;
-                        pos_l_eye_x = diff / 2;
-                        pos_l_eye_y = -diff / 2;
-                        pos_r_eye_x = diff / 2;
-                        pos_r_eye_y = halfh - (diff /2);
-                        eye_w = halfh;
-                        eye_h = dispw;
-                elseif ("cw90" == opts.display_rotate) then
-                        rotation = -90;
-                        invert_eye_dimension = true;
-                        pos_l_eye_x = diff / 2;
-                        pos_l_eye_y = halfh - (diff /2);
-                        pos_r_eye_x = diff / 2;
-                        pos_r_eye_y = -diff / 2;
-                        eye_w = halfh;
-                        eye_h = dispw;
-                elseif ("180" == opts.display_rotate) then
-                        rotation = 180;
-                        pos_l_eye_x = halfw;
-                        pos_l_eye_y = 0;
-                        pos_r_eye_x = 0;
-                        pos_r_eye_y = 0;
-                end
+		if ("ccw90" == opts.display_rotate ) then
+			rotation = 90;
+			invert_eye_dimension = true;
+			pos_l_eye_x = diff / 2;
+			pos_l_eye_y = -diff / 2;
+			pos_r_eye_x = diff / 2;
+			pos_r_eye_y = halfh - (diff /2);
+			eye_w = halfh;
+			eye_h = dispw;
+		elseif ("cw90" == opts.display_rotate) then
+			rotation = -90;
+			invert_eye_dimension = true;
+			pos_l_eye_x = diff / 2;
+			pos_l_eye_y = halfh - (diff /2);
+			pos_r_eye_x = diff / 2;
+			pos_r_eye_y = -diff / 2;
+			eye_w = halfh;
+			eye_h = dispw;
+		elseif ("180" == opts.display_rotate) then
+			rotation = 180;
+			pos_l_eye_x = halfw;
+			pos_l_eye_y = 0;
+			pos_r_eye_x = 0;
+			pos_r_eye_y = 0;
+		end
 
-                local l_eye = alloc_surface(eyew, eyeh);
-                local r_eye = alloc_surface(eyew, eyeh);
+		local l_eye = alloc_surface(eyew, eyeh);
+		local r_eye = alloc_surface(eyew, eyeh);
 
 		show_image({l_eye, r_eye});
 
@@ -272,8 +272,8 @@ local function setup_vr_display(wnd, callback, opts)
 		move_image(l_eye, pos_l_eye_x, pos_l_eye_y);
 		move_image(r_eye, pos_r_eye_x, pos_r_eye_y);
 
-                resize_image(l_eye, eye_w, eye_h);
-                resize_image(r_eye, eye_w, eye_h);
+		resize_image(l_eye, eye_w, eye_h);
+		resize_image(r_eye, eye_w, eye_h);
 
 		rotate_image(l_eye, rotation, 0);
 		rotate_image(r_eye, rotation, 0);
