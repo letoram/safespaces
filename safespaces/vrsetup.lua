@@ -213,6 +213,7 @@ local function setup_vr_display(wnd, callback, opts)
 			end
 		end
 
+
 		local dispw = md.width > 0 and md.width or 1920;
 		local disph = md.height > 0 and md.height or 1024;
 		dispw = math.clamp(dispw, 256, MAX_SURFACEW);
@@ -220,6 +221,62 @@ local function setup_vr_display(wnd, callback, opts)
 		local eyew = math.clamp(dispw * wnd.oversample_w, 256, MAX_SURFACEW);
 		local eyeh = math.clamp(disph * wnd.oversample_h, 256, MAX_SURFACEH);
 		local halfw = dispw * 0.5;
+		local halfh = disph * 0.5;
+		local diff = dispw - halfh;
+
+                local invert_eye_dimension = false;
+                local rotation = 0;
+                local pos_l_eye_x = 0;
+                local pos_l_eye_y = 0;
+                local pos_r_eye_x = halfw;
+                local pos_r_eye_y = 0;
+                local eye_w = halfw;
+                local eye_h = disph;
+
+                if ("ccw90" == opts.display_rotate ) then
+                        rotation = 90;
+                        invert_eye_dimension = true;
+                        pos_l_eye_x = diff / 2;
+                        pos_l_eye_y = -diff / 2;
+                        pos_r_eye_x = diff / 2;
+                        pos_r_eye_y = halfh - (diff /2);
+                        eye_w = halfh;
+                        eye_h = dispw;
+                elseif ("cw90" == opts.display_rotate) then
+                        rotation = -90;
+                        invert_eye_dimension = true;
+                        pos_l_eye_x = diff / 2;
+                        pos_l_eye_y = halfh - (diff /2);
+                        pos_r_eye_x = diff / 2;
+                        pos_r_eye_y = -diff / 2;
+                        eye_w = halfh;
+                        eye_h = dispw;
+                elseif ("180" == opts.display_rotate) then
+                        rotation = 180;
+                        pos_l_eye_x = halfw;
+                        pos_l_eye_y = 0;
+                        pos_r_eye_x = 0;
+                        pos_r_eye_y = 0;
+                end
+
+                local l_eye = alloc_surface(eyew, eyeh);
+                local r_eye = alloc_surface(eyew, eyeh);
+
+		show_image({l_eye, r_eye});
+
+		define_linktarget(l_eye, wnd.vr_pipe);
+		define_linktarget(r_eye, wnd.vr_pipe);
+		rendertarget_id(l_eye, 0);
+		rendertarget_id(r_eye, 1);
+
+		move_image(l_eye, pos_l_eye_x, pos_l_eye_y);
+		move_image(r_eye, pos_r_eye_x, pos_r_eye_y);
+
+                resize_image(l_eye, eye_w, eye_h);
+                resize_image(r_eye, eye_w, eye_h);
+
+		rotate_image(l_eye, rotation, 0);
+		rotate_image(r_eye, rotation, 0);
 
 -- Assume SBS configuration, L/R, combiner is where we apply distortion
 -- and the rendertarget we bind to a preview window as well as map to
@@ -241,22 +298,10 @@ local function setup_vr_display(wnd, callback, opts)
 			end
 		end
 
-		local dshader = shader_ugroup(vrshaders.distortion);
-		local l_eye = alloc_surface(eyew, eyeh);
-		local r_eye = alloc_surface(eyew, eyeh);
-		show_image({l_eye, r_eye});
-
 -- since we don't show any other models, this is fine without a depth buffer
 		if (combiner) then
 			define_rendertarget(combiner, {l_eye, r_eye});
 		end
-		define_linktarget(l_eye, wnd.vr_pipe);
-		define_linktarget(r_eye, wnd.vr_pipe);
-		rendertarget_id(l_eye, 0);
-		rendertarget_id(r_eye, 1);
-		move_image(r_eye, halfw, 0);
-		resize_image(l_eye, halfw, disph);
-		resize_image(r_eye, halfw, disph);
 
 		local cam_l = null_surface(1, 1);
 		local cam_r = null_surface(1, 1);
@@ -267,21 +312,24 @@ local function setup_vr_display(wnd, callback, opts)
 		local r_fov = math.deg(md.right_fov);
 
 		if (md.left_ar < 0.01) then
-			md.left_ar = halfw / disph;
+			md.left_ar = eye_w / eye_h;
 		end
 
 		if (md.right_ar < 0.01) then
-			md.right_ar = halfw / disph;
+			md.right_ar = eye_w / eye_h;
 		end
 
 		camtag_model(cam_l, 0.01, 100.0, l_fov, md.left_ar, true, true, 0, l_eye);
 		camtag_model(cam_r, 0.01, 100.0, r_fov, md.right_ar, true, true, 0, r_eye);
+
+		local dshader = shader_ugroup(vrshaders.distortion);
 
 -- ipd is set by moving l_eye to -sep, r_eye to +sep
 		if (md.ipd) then
 			move3d_model(cam_l, md.ipd * 0.5, 0, 0);
 			move3d_model(cam_r, -md.ipd * 0.5, 0, 0);
 		end
+
 
 -- the distortion model has three options, no distortion, fragment shader
 -- distortion and (better) mesh distortion that can be configured with
@@ -347,6 +395,7 @@ local function setup_vr_display(wnd, callback, opts)
 			end
 		end
 	end);
+
 end
 
 local function layer_rebalance(layer, ind)
