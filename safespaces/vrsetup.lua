@@ -233,7 +233,7 @@ local function setup_vr_display(wnd, callback, opts)
                 local eye_w = halfw;
                 local eye_h = disph;
 
-                if ("cw90" == opts.display_rotate ) then
+                if ("ccw90" == opts.display_rotate ) then
                         rotation = 90;
                         invert_eye_dimension = true;
                         pos_l_eye_x = diff / 2;
@@ -242,7 +242,7 @@ local function setup_vr_display(wnd, callback, opts)
                         pos_r_eye_y = halfh - (diff /2);
                         eye_w = halfh;
                         eye_h = dispw;
-                elseif ("ccw90" == opts.display_rotate) then
+                elseif ("cw90" == opts.display_rotate) then
                         rotation = -90;
                         invert_eye_dimension = true;
                         pos_l_eye_x = diff / 2;
