@@ -364,6 +364,7 @@ local function setup_vr_display(wnd, callback, opts)
 			hsep = 0.063500, center = 0.049694,
 			left_fov = 1.80763751, right_fov = 1.80763751,
 			left_ar = 0.888885, right_ar = 0.88885,
+			vpos = 0.046800,
 			distortion = {0.247, -0.145, 0.103, 0.795},
 			abberation = {0.985, 1.000, 1.015}
 		}, nil);

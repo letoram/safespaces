@@ -137,7 +137,10 @@ wait_for_display = function(dev, dstid)
 				map_video_display(dstid, id);
 			else
 				WM:setup_vr(
-				function(ctx, vid)
+				function(ctx, vid, a, b)
+					if (not ctx) then
+						return shutdown("VR bridge setup failed, missing / incorrect arcan_vr?", EXIT_FAILURE);
+					end
 					map_video_display(vid, id);
 				end, dev);
 			end
