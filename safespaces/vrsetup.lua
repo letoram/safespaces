@@ -160,8 +160,6 @@ local function vr_distortion(vrctx, model)
 	if (not model or model == "none") then
 		image_shader(vrctx.rt_l, "DEFAULT");
 		image_shader(vrctx.rt_r, "DEFAULT");
-		image_set_txcos_default(vrctx.rt_l);
-		image_set_txcos_default(vrctx.rt_r);
 	else
 		local md = vrctx.meta;
 		local shid = vrctx.shid;
@@ -183,8 +181,6 @@ local function vr_distortion(vrctx, model)
 
 		image_shader(vrctx.rt_l, shid);
 		image_shader(vrctx.rt_r, rsh);
-		image_set_txcos_default(vrctx.rt_l);
-		image_set_txcos_default(vrctx.rt_r);
 	end
 end
 
@@ -213,19 +209,26 @@ local function setup_vr_display(wnd, callback, opts)
 			end
 		end
 
-
+-- pick something if the display profile does not provide a resolution,
+-- for native platforms this could also go with VRESW/VRESH or get the
+-- dimensions of the display we are mapped on
 		local dispw = md.width > 0 and md.width or 1920;
 		local disph = md.height > 0 and md.height or 1024;
 		dispw = math.clamp(dispw, 256, MAX_SURFACEW);
 		disph = math.clamp(disph, 256, MAX_SURFACEH);
-		local eyew = math.clamp(dispw * wnd.oversample_w, 256, MAX_SURFACEW);
-		local eyeh = math.clamp(disph * wnd.oversample_h, 256, MAX_SURFACEH);
+
+-- apply the oversample_ (quality option) to each eye as they will then
+-- affect the rendertarget allocation
+		local eye_rt_w = math.clamp(dispw * wnd.oversample_w, 256, MAX_SURFACEW);
+		local eye_rt_h = math.clamp(disph * wnd.oversample_h, 256, MAX_SURFACEH);
 		local halfw = dispw * 0.5;
 		local halfh = disph * 0.5;
 		local diff = dispw - halfh;
 
-		local invert_eye_dimension = false;
-		local rotation = 0;
+-- depending on panel and lens configuration, we might need to modify
+-- the eye layout in the combiner stage
+		local rotate_l = 0;
+		local rotate_r = 0;
 		local pos_l_eye_x = 0;
 		local pos_l_eye_y = 0;
 		local pos_r_eye_x = halfw;
@@ -234,8 +237,8 @@ local function setup_vr_display(wnd, callback, opts)
 		local eye_h = disph;
 
 		if ("ccw90" == opts.display_rotate ) then
-			rotation = 90;
-			invert_eye_dimension = true;
+			rotate_l = 90;
+			rotate_r = 90;
 			pos_l_eye_x = diff / 2;
 			pos_l_eye_y = -diff / 2;
 			pos_r_eye_x = diff / 2;
@@ -243,24 +246,45 @@ local function setup_vr_display(wnd, callback, opts)
 			eye_w = halfh;
 			eye_h = dispw;
 		elseif ("cw90" == opts.display_rotate) then
-			rotation = -90;
-			invert_eye_dimension = true;
+			rotate_l = -90;
+			rotate_r = -90;
 			pos_l_eye_x = diff / 2;
 			pos_l_eye_y = halfh - (diff /2);
 			pos_r_eye_x = diff / 2;
 			pos_r_eye_y = -diff / 2;
 			eye_w = halfh;
 			eye_h = dispw;
+
+-- eyes rotate inward format
+		elseif ("cw90ccw90" == opts.display_rotate) then
+			local diff = math.abs(halfw - disph);
+			rotate_l = 90;
+			rotate_r = -90;
+			pos_l_eye_x = -diff / 2;
+			pos_l_eye_y = diff / 2;
+			eye_h = halfw;
+			eye_w = disph;
+			pos_r_eye_x = halfw - diff / 2;
+			pos_r_eye_y = diff / 2;
+
 		elseif ("180" == opts.display_rotate) then
-			rotation = 180;
+			rotate_l = 180;
+			rotate_r = 180;
 			pos_l_eye_x = halfw;
 			pos_l_eye_y = 0;
 			pos_r_eye_x = 0;
 			pos_r_eye_y = 0;
 		end
 
-		local l_eye = alloc_surface(eyew, eyeh);
-		local r_eye = alloc_surface(eyew, eyeh);
+		local l_eye = alloc_surface(eye_rt_w, eye_rt_h);
+		local r_eye = alloc_surface(eye_rt_w, eye_rt_h);
+		if (opts.left_coordinates) then
+			image_set_txcos(l_eye, opts.left_coordinates);
+		end
+
+		if (opts.right_coordinates) then
+			image_set_txcos(r_eye, opts.right_coordinates);
+		end
 
 		show_image({l_eye, r_eye});
 
@@ -275,8 +299,8 @@ local function setup_vr_display(wnd, callback, opts)
 		resize_image(l_eye, eye_w, eye_h);
 		resize_image(r_eye, eye_w, eye_h);
 
-		rotate_image(l_eye, rotation, 0);
-		rotate_image(r_eye, rotation, 0);
+		rotate_image(l_eye, rotate_l);
+		rotate_image(r_eye, rotate_r);
 
 -- Assume SBS configuration, L/R, combiner is where we apply distortion
 -- and the rendertarget we bind to a preview window as well as map to
@@ -329,7 +353,6 @@ local function setup_vr_display(wnd, callback, opts)
 			move3d_model(cam_l, md.ipd * 0.5, 0, 0);
 			move3d_model(cam_r, -md.ipd * 0.5, 0, 0);
 		end
-
 
 -- the distortion model has three options, no distortion, fragment shader
 -- distortion and (better) mesh distortion that can be configured with
