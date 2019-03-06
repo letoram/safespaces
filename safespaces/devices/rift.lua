@@ -1,7 +1,7 @@
 return {
 	display = '^Rift/WMHD',
-	oversample_w = 1.4,
-	oversample_h = 1.4,
+	oversample_w = 0.8,
+	oversample_h = 0.8,
 	distortion_model = "basic",
 	prelaunch = true
 -- metadata overrides

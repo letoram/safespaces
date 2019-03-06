@@ -23,6 +23,7 @@ return {
 		["DOWN"] = "layers/current/models/selected/child_swap=-1",
 		["."] = "layers/current/models/selected/split=1",
 		[","] = "layers/current/models/selected/split=-1",
+		["F4"] = "mouse=IPD",
 		["F5"] = "hmd/reset",
 		["F9"] = "hmd/step_ipd=-0.01",
 		["F10"] = "hmd/step_ipd=0.01",

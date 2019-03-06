@@ -27,6 +27,9 @@ windows.
           view : input modifies camera orientation
           scale : input modifies focus selected model scale
           rotate : input modifies selected model orientation
+					ipd : input modifies eye- distance and distortion
+					      parameters, repeated calls cycles which parameter
+								that is targeted
 
 # Device Control ( /hmd )
 
@@ -126,6 +129,7 @@ selection via /layers/current/models/selected/
     connpoint/
     source_inv=s
     source=s
+		 set a resource path as the source texture map for the model
 
 # Connection Points
 
@@ -135,5 +139,6 @@ activated via the model access (see above) connpoint subdirectory.
 
     replace=s : the connection point contents will permanently map to the model
     temporary=s : when the connection point closes, the previous map will return
-    reveal=s : show the model only when the connection point isn't active
+    reveal=s : auto hide/show the model based on if aonyone is connected to the
+		           connection point or not
     reveal_focus=s : like reveal, but automatically set input focus

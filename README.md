@@ -1,11 +1,7 @@
 # Safespaces
 
 This is the development / prototyping environment for 'Safespaces', a 3D/VR
-desktop environment for the Arcan display server. To get the full use out of
-it, first make sure that you have an OpenHMD supported headset, a working
-[Arcan](https://github.com/letoram/arcan) installation along with the vrbridge
-tool all setup (see the main arcan repository for instructions and configuring
-and installing).
+desktop environment for the Arcan display server.
 
 Note that this is a highly experimental young project. Prolonged use is quite
 likely unhealthy in a number of ways, eye strain guaranteed while debugging.
@@ -16,7 +12,7 @@ The project and related development is discussed in the #arcan IRC channel on
 the freenode IRC network. **Note** the development of the scripts herein are
 mainly done as part of the 'vrviewer' tool (durden/tools/vrviewer in the
 source tree) [Durden](https://github.com/letoram/durden) and only mirrored
-and tracked here in "release bursts" when there are are things to synch. 
+and tracked here in "release bursts" when there are are things to synch.
 
 ## Setting up
 
@@ -161,11 +157,10 @@ Milestone 1:
       - [x] Over-and-Under
       - [x] Swap L/R Eye
 
-- [ ] Basic Layouter ("Window Manager")
+- [x] Basic Layouter ("Window Manager")
   - [x] Circular Layers
   - [x] Swap left / right
   - [x] Cycle left / right
-  - [ ] Minimize motion on rebuild
   - [x] Transforms (spin, nudge, scale)
   - [x] Curved Planes
   - [x] Billboarding
@@ -177,7 +172,7 @@ Milestone 1:
   - [x] Built-ins (terminal/external connections)
 	- [ ] Launch targets
   - [x] Xarcan
-  - [ ] Wayland-simple (toplevel/fullscreen only)
+  - [x] Wayland-simple (toplevel/fullscreen only)
 
 Milestone 2:
 

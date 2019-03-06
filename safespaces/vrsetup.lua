@@ -160,7 +160,9 @@ local function vr_distortion(vrctx, model)
 	if (not model or model == "none") then
 		image_shader(vrctx.rt_l, "DEFAULT");
 		image_shader(vrctx.rt_r, "DEFAULT");
+		vrctx.meta.model = "none";
 	else
+		vrctx.meta.model = model;
 		local md = vrctx.meta;
 		local shid = vrctx.shid;
 		local viewport = {md.horizontal * 0.5, md.vertical};
@@ -354,8 +356,8 @@ local function setup_vr_display(wnd, callback, opts)
 			move3d_model(cam_r, -md.ipd * 0.5, 0, 0);
 		end
 
--- the distortion model has three options, no distortion, fragment shader
--- distortion and (better) mesh distortion that can be configured with
+-- the distortion model has Three options, no distortion, fragment shader
+-- distortion and (better) Mesh distortion that can be configured with
 -- image_tesselation (not too many subdivisions, maybe 30, 40 something
 
 		wnd.vr_state = {

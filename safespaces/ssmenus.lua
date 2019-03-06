@@ -16,6 +16,77 @@ local function rotate_camera(WM, iotbl)
 	return;
 end
 
+local function get_fact(base, ext, min, m1, m2)
+	local res = base;
+	if (m1) then
+		res = res * ext;
+	end
+	if (m2) then
+		res = res * min;
+	end
+	return res;
+end
+
+local ipd_modes = {
+	{"IPD",
+function(WM, vr_state, delta, m1, m2)
+		vr_state.meta.ipd = vr_state.meta.ipd + delta * get_fact(0.1, 10, 0.01, m1, m2);
+		move3d_model(vr_state.l, vr_state.meta.ipd * 0.5, 0, 0);
+		move3d_model(vr_state.r, -vr_state.meta.ipd * 0.5, 0, 0);
+end},
+	{"distort w",
+function(WM, vr_state, delta, m1, m2)
+	vr_state.meta.distortion[1] = vr_state.meta.distortion[1] + delta * get_fact(0.01, 10, 0.1, m1, m2);
+end},
+	{"distort x",
+function(WM, vr_state, delta, m1, m2)
+	vr_state.meta.distortion[2] = vr_state.meta.distortion[2] + delta * get_fact(0.01, 10, 0.1, m1, m2);
+end},
+	{"distort y",
+function(WM, vr_state, delta, m1, m2)
+	vr_state.meta.distortion[3] = vr_state.meta.distortion[3] + delta * get_fact(0.01, 10, 0.1, m1, m2);
+end},
+	{"distort z",
+function(WM, vr_state, delta, m1, m2)
+	vr_state.meta.distortion[4] = vr_state.meta.distortion[4] + delta * get_fact(0.01, 10, 0.1, m1, m2);
+end},
+	{"abberation r",
+function(WM, vr_state, delta, m1, m2)
+	vr_state.meta.distortion[4] = vr_state.meta.distortion[4] + delta * get_fact(0.001, 10, 0.1, m1, m2);
+end
+	},
+	{"abberation g",
+function(WM, vr_state, delta, m1, m2)
+	vr_state.meta.distortion[4] = vr_state.meta.distortion[4] + delta * get_fact(0.001, 10, 0.1, m1, m2);
+end},
+	{"abberation b",
+function(WM, vr_state, delta, m1, m2)
+	vr_state.meta.distortion[4] = vr_state.meta.distortion[4] + delta * get_fact(0.001, 10, 0.1, m1, m2);
+end},
+};
+
+local function step_ipd_distort(WM, iotbl)
+	local vr_state = WM.vr_state;
+	if not vr_state.ipd_target then
+		vr_state.ipd_target = 0;
+	end
+
+	if (iotbl.digital) then
+		return;
+	end
+
+	local step = iotbl.samples[iotbl.relative and 1 or 2];
+
+-- just take one axis, both is a bit too noisy
+	if (iotbl.subid == 0) then
+		local ent = ipd_modes[vr_state.ipd_target + 1];
+		if (ent) then
+			ent[2](WM, vr_state, step, dispatch_meta());
+			vr_state:set_distortion(vr_state.meta.distortion_model);
+		end
+	end
+end
+
 local function scale_selected(WM, iotbl)
 	if (iotbl.digital or iotbl.subid ~= 0 or
 		not WM.selected_layer or not WM.selected_layer.selected) then
@@ -56,17 +127,29 @@ return function(WM)
 	kind = "value",
 	description = "Change the mouse mapping behavior",
 	label = "Mouse",
-	set = {"Selected", "View", "Scale", "Rotate"},
+	set = {"Selected", "View", "Scale", "Rotate", "IPD"},
 	handler = function(ctx, val)
 		val = string.lower(val);
 		if (val == "selected") then
+			vr_system_message("selected window mouse mode");
 			WM.mouse_handler = nil;
 		elseif (val == "view") then
+			vr_system_message("view mouse mode");
 			WM.mouse_handler = rotate_camera;
 		elseif (val == "scale") then
+			vr_system_message("scale mouse mode");
 			WM.mouse_handler = scale_selected;
 		elseif (val == "rotate") then
+			vr_system_message("routate mouse mode");
 			WM.mouse_handler = rotate_selected;
+		elseif (val == "ipd") then
+			if (WM.mouse_handler == step_ipd_distort) then
+				WM.vr_state.ipd_target = (WM.vr_state.ipd_target + 1) % (#ipd_modes);
+			else
+				WM.vr_state.ipd_target = 0;
+				WM.mouse_handler = step_ipd_distort;
+			end
+			vr_system_message("mouse-mode: " .. ipd_modes[WM.vr_state.ipd_target+1][1]);
 		end
 	end
 });

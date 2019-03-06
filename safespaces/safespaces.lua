@@ -2,8 +2,8 @@
 local display_action = function() end
 WM = {};
 local debugf = print;
-local debug_verbose = DEBUGLEVEL > 0;
 local SYMTABLE;
+local debug_verbose = DEBUGLEVEL > 0;
 local wait_for_display;
 
 function safespaces(args)
@@ -69,6 +69,10 @@ function safespaces(args)
 	WM.menu = (system_load("vrmenus.lua")())(WM, prefix);
 	WM.mouse_mode = "direct";
 	(system_load("ssmenus.lua")())(WM);
+
+	dispatch_meta = function()
+		return SYMTABLE.mstate[1], SYMTABLE.mstate[2]
+	end
 
 -- function call hidden inside vrmenus, needed for sharing codebase with durden
 	dispatch_symbol = function(sym)

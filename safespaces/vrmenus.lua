@@ -30,6 +30,13 @@ local function add_model_menu(wnd, layer)
 	return res;
 end
 
+-- global hook for hooking into notification or t2s
+if (not vr_system_message) then
+vr_system_message = function(str)
+	print(str);
+end
+end
+
 local function get_layer_settings(wnd, layer)
 	return {
 	{
