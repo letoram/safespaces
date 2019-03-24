@@ -3,7 +3,8 @@ return {
 	oversample_w = 0.8,
 	oversample_h = 0.8,
 	distortion_model = "basic",
-	prelaunch = true
+	prelaunch = true,
+	ipd = 20
 -- metadata overrides
 -- width = .. (0.5width*oversample_w)
 -- height = ..

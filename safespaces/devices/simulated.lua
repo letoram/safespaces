@@ -6,12 +6,6 @@ return {
 	no_combiner = true,
 	width = VRESW,
 	height = VRESH,
---	display_rotate = "ccw90",
 	bindings = {
-		["F1"] = "mouse=Selected",
-		["F2"] = "mouse=View",
-		["F3"] = "mouse=Scale",
-		["F11"] = "hmd/distortion=basic",
-		["F12"] = "hmd/distortion=none",
 	}
 };

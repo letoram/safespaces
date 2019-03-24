@@ -66,7 +66,7 @@ return function(layer)
 		local half_len = 0.5 * (p2p - p1p);
 
 -- special case, @12-o-clock (0.5pi) the object is already centered,
--- so only step by half, not by the whole - note that this does not
+-- so only step by half
 		if (in_first) then
 			if (v.active) then
 				dphi_ccw = dphi_ccw + half_len;

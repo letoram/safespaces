@@ -1,5 +1,4 @@
 # Safespaces
-
 This is the development / prototyping environment for 'Safespaces', a 3D/VR
 desktop environment for the Arcan display server.
 
@@ -8,118 +7,198 @@ likely unhealthy in a number of ways, eye strain guaranteed while debugging.
 Tread carefully and try with non-VR device profiles first. Keep a vomit-bucket
 nearby.
 
+# Contact
 The project and related development is discussed in the #arcan IRC channel on
-the freenode IRC network. **Note** the development of the scripts herein are
-mainly done as part of the 'vrviewer' tool (durden/tools/vrviewer in the
-source tree) [Durden](https://github.com/letoram/durden) and only mirrored
-and tracked here in "release bursts" when there are are things to synch.
+the freenode IRC network. Some of the development here is also done within the
+related project [durden](http://durden.arcan-fe.com) as part of the 'VRviewer'
+tool. Most of the codebase here is actually shared with that tool.
 
-## Setting up
+# Getting Started
+You need a working build / installation of [Arcan](https://github.com/letoram/arcan)
+so follow those instructions first. then read the following sections carefully.
 
-NOTE - For running 'natively' (no X etc.) on Linux systems, stick to kernels
-that are <= 4.14 for the time being, some change in 4.15 broke the support
-for scanout on VR displays.
+## VR Bridge (device support)
+Arcan does not enable VR device support by default, so you need to build the
+'arcan_vr' tool that is in the main arcan source repository as 'src/tools/vrbridge'.
+You should also be able to run that tool from the command-line to test the rotation
+tracking and control of your head mounted display (HMD).
 
-You can start simply with:
+This usually requires some kind of adjustments to permissions, as it requires
+direct access to USB device control. When you have that tool working, you need
+to tell arcan to use it for VR support:
 
-    arcan /path/to/safespaces
+    arcan_db add_appl_kv arcan ext_vr /path/to/arcan_vr
 
-Or for specifying profiles other than those labeled as 'default' with:
+This tool act as our device control interface, so if there are more sensor devices
+you want to add, this is where it can be done. The idea is that each vr-bridge
+instance exposes a skeletal model (joints, eyes, ...) that you populate with
+whatever devices you happen to have. These are advertised to the active scripts
+(safespaces here) which then determine react accordingly by mapping to models,
+cameras, gesture classifiers and other abstract objects.
 
-    arcan /path/to/safespaces space=spacename device=devicename
+## Device Profile
+There is great variety in how HMD devices work, behave, and what extra controls
+you might need. On top of the VR Bridge that gives us access to the devices
+themselves, we then need the integration with the visual aspects of the desktop.
 
-The space profile match to the corresponding spacename (.lua) in the spaces/
-subfolder which defines environment layout, visuals, workflow and input
-response. The device profile controls how the rendering pipe will be
-configured. There are a few default device presets to chose from:
+You can find the current profiles (or add your own) in the devices/ folder, and
+they are normal .lua scripts that gets loaded immediately on startup. An example
+looks like this:
 
-* basic - takes whatever the arcan vr bridge provides as the default
-* monoscopic - normal "3D" with mouse and keyboard
-* psvr - waits for a PSVR HMD display to appear before activating
-* rift - used for oculus rift
-* simulated - works like monoscopic but outputs with a faked profile
+    return {
+        display = 'MyScreenName',
+        prelaunch = true,
+        oversample_w = 1.0,
+        oversample_h = 1.0,
+        distortion_model = "basic",
+        display_rotate = 'cw90',
+        width = 2560,
+        height = 1440,
+        hmdarg = "ohmd_index=-1",
+        bindings = [
+            ["F1"] = "mouse=selected"
+        ]
+    }
 
-The next section, configuration, goes into detail on how these can be extended
-or complemented.
+The values herein takes precedence over whatever the VR bridge might have set,
+so you can have your custom overrides here. The 'bindings' complement input
+configuration with special ones you might want for a certain device only.
 
-# Configuration
+For all the options, see devices/README.md
 
-The config.lua file determines the reserved meta keys, reported client display
-properties, font and so on. The configuration is further split up into the
-(empty) default autorun.lua, the command-line controllable device profile and
-the currently active 'Space'.
+Some properties are extra important, such as 'display' - the profile will only
+ever get activated when a display with that specific name (can be a lua pattern)
+gets detected.
+
+There are some special built-in profiles:
+
+* 'desktop'    : 3D desktop only, no vr devices or stereoscopic rendering
+* 'basic'      : Just draw to the default display
+* 'headless'   : Stereoscopic rendering, no VR devices
+
+'Basic' is useful if you are trying to run arcan as a normal client with an
+outer display server like Xorg or on OS X. It draws as a normal window and
+you get to use whatever controls the display server provides to move it to
+the HMD display.
+
+## Configuration
+
+WM, Input, Device Profiles, Default 'space' - all of it is set in the
+config.lua file. Look at it. Especially the 'Input Controls' section with
+its meta keys and its bindings as it will tell you how to shutdown, which
+is quite important.
+
+The binding format is simply:
+
+    ["modifiers_SYMBOL"] = "api/path"
+
+and the API paths are how everything in safespaces is controlled. Everything
+is organised like a filesystem, and the API.md file describes how these
+filesystem paths are generated.
 
 ## Spaces
 
-A space is simply a synchronized set of activated command paths that follow a
-/path/to/command or /path/to/key=value for non-binary settings.  The full set
-of possible such paths are covered in API.md, including the option to load
-other spaces (with no protection against recursion, mind you). Every window
-management option and interaction model will be provided in this way,
-optionally via a mountable filesystem to make it easier to discover.
+The next thing to consider is a 'space'. These are simply collections of
+paths that gets started synchronously in one batch, and is basically your
+current environment/scene preset.
 
-# Devices
+The default space gives you a skybox and a terminal in the middle. *This
+terminal is configured so that if you destroy or exit it, safespaces itself
+will shut down*. This is a safety measure to save you if the keybindings
+are broken or you do not know how to exit.
 
-The device profile determines rendering mode, target output and input devices,
-arguments to the VR device bridge and possible overrides for properties such
-as oversampling and distortion parameters, along with device- specific input
-bindings. Note that any collisions between bindings defined for a device vs.
-bindings defined for the global config will be biased in favor of the global
-config and a warning printed to stdout for each collision.
+To remove that feature, edit the default space and remove the:
 
-The list if device- configuration fields are as follows:
+    layers/current/terminal/models/selected/events/on_destroy=shutdown
 
-    -- example.lua
-		return {
-			display = '^MYDEV', -- full lua string matching pattern
-      oversample_w = 1.0, -- composition buffer width * display width
-			oversample_h = 1.0, -- composition buffer height * display height
-			distortion_model = 'basic', -- basic (OpenHMD universal shader or none)
-      width = 1024, -- display width in pixels
-			height = 512, -- display height in pixels
-			center = 0.001, -- vertical center in meters
-      grab = false, -- disable window mode input grab
-			horizontal =
+line.
 
-		bindings = {
-		["k"] = "/path/from/API.md"
-		}
-		}
+## Starting
 
-## In- use Configuration
+Now that the basic concept sare introduced and you should know where to go
+for modifying your controls, device and setting up your first space.
 
-Though the config.lua (+ whatever device and space specific bindings that you
-use) specify the different active keybindings, there are some that are
-particularly important to know about.
+    arcan ./safespaces
 
-hmd/reset : default bound to meta+F5, this will define your
-current viewing angle as your default 'staring comfortably
-forward' position. This can be used to reorient yourself and to
-work around drift in the orientation sensor tracking.
+Or
 
-hmd/step\_ipd=0.1 or -0.1 : default bound to meta+F9,meta+F10, and is used to
-change the virtual relative eye distance.
+    arcan /path/to/safespaces-git/safespaces
 
-## Troubleshooting
+Depending on where it is located. Some values in your config.lua can be
+overridden on the commandline, particularly the space and the device.
+You can do this by adding them last on the list of arguments, like this:
 
-There are a number of moving parts that can go wrong here, depending on the
-lower details of your system. For VR use, always make sure that the HMD itself
-is working via OpenHMD and their simple text examples first. Then make sure
-that your user actually has access to the input and output devices that you
-wish to use.
+    arcan ./safespaces space=myspace device=vive
 
-The next big part (for VR use) is the presence of the 'arcan\_vr' binary. Not
-only do you have to build it manually (arcan git repository, tools/vrbridge)
-but you also have to set the path to it in the arcan configuration database,
-see the README.md for the vrbridge tool on details for that.
+# Clients
 
-## Device Specific Notes
+Now you might just want to run more things than terminal. To do that,
+you will want to understand 'connection points'. These are basically things
+in the vr environment that listens for external connections under some name.
 
-For Oculus Rift CV1 (and possibly others), the display doesn't register as such
-immediately. It may be necessary to take the headset on and off a few times
-before it actually appears as a new display.
+The terminal emulator happens to set one up for you, so anything started
+from the terminal emulator will be spawned as a new rectangle child to the
+terminal itself.
 
-## Roadmap / Status
+Underneath the surface, a client built using the arcan client APIs look
+for the environment:
+
+    ARCAN_CONNPATH=name
+
+This is used heavily here to let the desktop understand what is going on
+based on where a client connects to. As an example, the default space has
+a 'show on activation' connection point:
+
+    ARCAN_CONNPATH=moviescreen afsrv_terminal
+
+Would activate this hidden screen and spawn a terminal there. There are some
+clients that come with arcan and there are some opt-in tools you can build
+yourself.
+
+## Built-in
+
+With an arcan build comes support for three clients that are interesting
+here, terminal, libretro-loader and video decoder (built on VLC). These
+are prefixed with afsrv\_ (terminal, game, decode). To run a
+[libretro](https://www.libretro.com) core for instance:
+
+    ARCAN_ARG=core=/path/to/core.so:resource=/path/to/gamedata afsrv_game
+
+or indeed direct it to the moviescreen connection point as shown before.
+
+    ARCAN_CONNPATH=moviescreen ARCAN_ARG=file=myfile.mkv afsrv_decode
+
+should give you some movieplayback.
+
+## Supportive
+
+In the arcan source repository, there is 'aloadimage', which is a simple
+image loader that also has support for stereoscopic sources:
+
+    aloadimage --vr l:left_eye.png r:right_eye.png
+
+The source for this tool can be found in src/tools/aloadimage, and should
+work as a template for writing your own arcan/safespaces compliant VR
+clients.
+
+## X, Wayland
+
+To support running legacy applications using the X or Wayland protocols,
+there are two paths. One is [Xarcan](https://github.com/letoram/xarcan)
+which is a modified X server. You start it, attach a window manager and
+use it as a 'contained in a surface' kind of mode.
+
+For Wayland, there is another tool in the arcan source repository, in the
+src/tools/waybridge folder, which implements the server side of the Wayland
+protocol. Normally, it should simply be runnable via:
+
+    arcan-wayland -exec my_wayland_client
+
+## Roadmap
+
+There is a long road ahead of us to make sure that Safespaces is the definitive
+desktop for productive work in the VR/AR/MR space. Here follows a checklist
+of some of those steps:
 
 Milestone 1:
 
@@ -133,6 +212,7 @@ Milestone 1:
     - [ ] Validation
   - [x] Mouse
   - [x] Keyboard
+	- [ ] Front-Camera composition
 
 - [ ] Models
   - [x] Primitives
@@ -147,6 +227,7 @@ Milestone 1:
       - [x] Basic mesh
       - [x] half-cylinder
     - [x] Rectangle
+		  - [ ] Border/Background
 		- [x] Custom Mesh (.ctm)
     - [ ] GlTF2
       - [ ] Simple/Textured Mesh
@@ -156,23 +237,35 @@ Milestone 1:
       - [x] Side-by-Side
       - [x] Over-and-Under
       - [x] Swap L/R Eye
+			- [ ] Split (left- right sources)
+ - [ ] Events
+      - [ ] On Destroy
 
-- [x] Basic Layouter ("Window Manager")
-  - [x] Circular Layers
-  - [x] Swap left / right
-  - [x] Cycle left / right
-  - [x] Transforms (spin, nudge, scale)
-  - [x] Curved Planes
-  - [x] Billboarding
-  - [x] Fixed "infinite" Layers
-  - [x] Vertical hierarchies
-  - [x] Connection- activated models
+- [x] Layouters
+  - Tiling / Auto
+    - [x] Circular Layers
+    - [x] Swap left / right
+    - [x] Cycle left / right
+    - [x] Transforms (spin, nudge, scale)
+    - [x] Curved Planes
+    - [x] Billboarding
+    - [x] Fixed "infinite" Layers
+    - [x] Vertical hierarchies
+    - [x] Connection- activated models
+
+ - Staatic / Manual
+		- [ ] Curved Plane
+    - [ ] Drag 'constraint' solver (collision avoidance)
+    - [ ] Draw to Spawn
 
 - [ ] Clients
   - [x] Built-ins (terminal/external connections)
 	- [ ] Launch targets
   - [x] Xarcan
   - [x] Wayland-simple (toplevel/fullscreen only)
+
+- [ ] Tools
+  - [ ] Basic 'listview' popup
 
 Milestone 2:
 

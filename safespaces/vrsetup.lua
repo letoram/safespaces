@@ -56,12 +56,19 @@ void main()
 
 local frag = [[
 uniform sampler2D map_tu0;
+uniform sampler2D map_tu1;
 uniform float obj_opacity;
+uniform int rtgt_id;
+uniform bool stereo;
 varying vec2 texco;
 
 void main()
 {
-	vec4 col = texture2D(map_tu0, texco);
+	vec4 col;
+	if (stereo && rtgt_id == 1){
+		col = texture2D(map_tu1, texco);
+	}
+		col = texture2D(map_tu0, texco);
 	gl_FragColor = vec4(col.rgb, col.a * obj_opacity);
 }
 ]];
@@ -446,11 +453,20 @@ local function layer_rebalance(layer, ind)
 	end
 end
 
-local function model_display_source(model, vid)
+local function model_display_source(model, vid, altvid)
+-- it would be possible to let the altvid attach to the model at the display index
+-- as well, but then we'd need to set up the model frameset with multiple VIDs per
+-- mesh so that the right mesh gets the right texture, OR we rework everything to
+-- always have two texture slots available but a uniform to toggle the stereo part
+-- on or off.
 	if (model.display_index) then
 		set_image_as_frame(model.vid, vid, model.display_index);
 	else
 		image_sharestorage(vid, model.vid);
+		if (valid_vid(altvid)) then
+			image_framesetsize(model.vid, 2, FRAMESET_MULTITEXTURE);
+			set_image_as_frame(model.vid, altvid, 1);
+		end
 	end
 end
 
@@ -474,7 +490,7 @@ local function model_scale(model, sx, sy, sz)
 	};
 end
 
-local function model_external(model, vid, flip)
+local function model_external(model, vid, flip, alt)
 	if (not valid_vid(vid, TYPE_FRAMESERVER)) then
 		if (model.external) then
 			model.external = nil;
@@ -520,7 +536,9 @@ local function model_getscale(model)
 	end
 
 	return
-		model.scalev[1] * sf, model.scalev[2] * sf, model.scalev[3] * sf;
+		math.abs(model.scalev[1] * sf),
+		math.abs(model.scalev[2] * sf),
+		math.abs(model.scalev[3] * sf);
 end
 
 local function model_getsize(model, noscale)
@@ -583,31 +601,33 @@ local function model_destroy(model)
 
 -- clean up rendering resources, but defer on animation
 	local destroy = function(tmpmodel)
-	if (model.custom_shaders) then
-		for i,v in ipairs(model.custom_shaders) do
-			delete_shader(v);
+		if (model.custom_shaders) then
+			for i,v in ipairs(model.custom_shaders) do
+				delete_shader(v);
+			end
+		end
+
+		delete_image(model.vid);
+		if (valid_vid(model.external) and not model.external_protect) then
+			delete_image(model.external);
+		end
+
+-- custom shader? these are derived with shader_ugroup so delete is simple
+		if (model.shid) then
+			delete_shader(model.shid);
+		end
+
+		if (valid_vid(model.ext_cp)) then
+			delete_image(model.ext_cp);
+		end
+
+-- make it easier to detect dangling references
+		for k,_ in pairs(model) do
+			model[k] = nil;
 		end
 	end
 
-	delete_image(model.vid);
-	if (valid_vid(model.external) and not model.external_protect) then
-		delete_image(model.external);
-	end
-
--- custom shader? these are derived with shader_ugroup so delete is simple
-	if (model.shid) then
-		delete_shader(model.shid);
-	end
-
-	if (valid_vid(model.ext_cp)) then
-		delete_image(model.ext_cp);
-	end
-
--- make it easier to detect dangling references
-	for k,_ in pairs(model) do
-		model[k] = nil;
-	end
-	end
+	local on_destroy = model.on_destroy;
 
 -- animate fade out if desired, this has ugly subtle asynch races as the
 -- different event handlers that may be attached to objects that are linked to
@@ -622,6 +642,15 @@ local function model_destroy(model)
 		tag_image_transform(model.vid, MASK_OPACITY, destroy);
 	else
 		destroy();
+	end
+
+-- lastly run any event handler
+	for k,v in ipairs(on_destroy) do
+		if type(v) == "function" then
+			v()
+		elseif type(v) == "string" then
+			dispatch_symbol(v)
+		end
 	end
 
 -- and rebalance / reposition
@@ -705,7 +734,7 @@ local function model_split_shader(model)
 	if (not model.custom_shaders) then
 		model.custom_shaders = {
 			shader_ugroup(model.shader.normal),
-			shader_ugroup(model.shader.flip)
+			shader_ugroup(model.shader.flip),
 		};
 		model.shader.normal = model.custom_shaders[1];
 		model.shader.flip = model.custom_shaders[2];
@@ -770,9 +799,9 @@ local function model_connpoint(model, name, kind, nosw)
 				return modelconn_eventhandler(model.layer, model, ...);
 			end);
 
-		if (kind == "child") then
-			return model_connpoint(model, name, kind, true);
-		end
+			if (kind == "child") then
+				return model_connpoint(model, name, kind, true);
+			end
 
 -- this should only happen in rare (OOM) circumstances, then it is
 -- probably better to do nother here or spawn a timer
@@ -890,6 +919,9 @@ local function build_model(layer, kind, name, ref)
 		layer_pos = {0, 0, 0},
 		rel_ang = {0, 0, 0},
 		rel_pos = {0, 0, 0},
+
+-- event-handlers
+		on_destroy = {},
 
 -- method vtable
 		destroy = model_destroy,
@@ -1095,6 +1127,25 @@ local function model_eventhandler(wnd, model, source, status)
 	end
 end
 
+-- trying to
+local function model_stereo_eventhandler(wnd, model, source, status)
+	if (status.kind == "segment_request") then
+		if (status.segkind == "hmd-r") then
+-- don't do anything here, let the primary segment determine behavior
+			local props = image_storage_properties(source);
+			local vid = accept_target(props.width, props.height, function(...) end)
+			if (not valid_vid(vid)) then
+				return;
+			end
+
+--			image_framesetsize(source, 2, FRAMESET_MULTITEXTURE);
+--			set_image_as_frame(source, vid, 1);
+		end
+	end
+
+	return model_eventhandler(wnd, model, source, status);
+end
+
 -- terminal eventhandler behaves similarly to the default, but also send fonts
 local function terminal_eventhandler(wnd, model, source, status)
 	if (status.kind == "preroll") then
@@ -1178,7 +1229,7 @@ clut = {
 	["lightweight arcan"] = model_eventhandler,
 	["bridge-x11"] = model_eventhandler,
 	browser = model_eventhandler,
-
+	["hmd-l"] = model_stereo_eventhandler,
 -- handlers to types that we don't accept as primary now
 	["bridge-wayland"] = wayland_eventhandler,
 	clipboard = nil, -- no clipboard managers
@@ -1266,6 +1317,10 @@ local function layer_add_terminal(layer, opts)
 	model:set_external(vid, true);
 	link_image(vid, model.vid);
 	model:set_connpoint(cp, "child");
+	if not layer.selected then
+		model:select()
+	end
+	model.ext_name = nil;
 end
 
 local function layer_set_fixed(layer, fixed)

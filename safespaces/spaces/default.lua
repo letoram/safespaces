@@ -37,8 +37,13 @@ return {
 "layers/layer_mid/models/screen/scale=5",
 
 -- and set the right focus
-"layers/layer_fg/focus"
+"layers/layer_fg/focus",
 
+-- temrinal should be the focus of this layer, add a shutdown event should
+-- this terminal be destroyed, remove this when you know how to exit :-)
+"layers/current/models/selected/events/destroy=shutdown",
+
+-- Other example models to add to your scene:
 -- a model layer that starts out hidden for mostly-non-interactive sources
 -- "layers/add=view",
 -- "layers/layer_view/settings/radius=20.0",
@@ -53,7 +58,3 @@ return {
 --"layers/layer_fg/models/sbsvid/connpoint/reveal=sbsvid",
 --"layers/layer_fg/models/sbsvid/stereoscopic=sbs"
 };
-
--- "layers/layer_bg/add_model/sphere=bg",
--- "layers/layer_bg/models/bg/source=center360.png",
--- "layers/layer_bg/models/bg/connpoint/temporary=360bg",

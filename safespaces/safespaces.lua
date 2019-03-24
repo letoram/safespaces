@@ -76,7 +76,10 @@ function safespaces(args)
 
 -- function call hidden inside vrmenus, needed for sharing codebase with durden
 	dispatch_symbol = function(sym)
-		sym = string.sub(sym, 2);
+		local ns = string.sub(sym, 1, 1)
+		if (ns == "#" or ns == "!") then
+			sym = string.sub(sym, 2)
+		end
 		suppl_run_menu(WM.menu, sym, debugf, debug_verbose)
 	end
 
@@ -176,9 +179,20 @@ function safespaces_input(iotbl)
 		elseif (sym == SYMTABLE.meta_2) then
 			SYMTABLE.mstate[2] = iotbl.active;
 		else
-			sym = (iotbl.active and "" or "r") .. sym;
+			if not iotbl.active then
+				sym = "release_" .. sym
+			end
+
+			if SYMTABLE.mstate[1] then
+				sym = "m1_" .. sym
+			end
+
+			if SYMTABLE.mstate[2] then
+				sym = "m2_" .. sym
+			end
+
 			local path = SYMTABLE.bindings[sym];
-			if (path and (SYMTABLE.mstate[1] or SYMTABLE.mstate[2])) then
+			if (path) then
 				suppl_run_menu(WM.menu, path, debugf, debug_verbose);
 				return;
 			end

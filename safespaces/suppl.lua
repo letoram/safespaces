@@ -435,6 +435,7 @@ function suppl_run_menu(menu, path, errorf, verbose)
 
 	local cmd = table.remove(cmdtbl, 1);
 	local path = {};
+
 	while (cmd) do
 		local ent = table.find_key_i(menu, "name", cmd);
 		if (not ent) then
@@ -448,6 +449,9 @@ function suppl_run_menu(menu, path, errorf, verbose)
 -- check so that the entity is valid
 		if (ent.eval) then
 			if (not ent.eval()) then
+				if (verbose and type(errorf) == "function") then
+					errorf(string.format("%s: evail failed on entry %s", table.concat(path, "/"), cmd));
+				end
 				return;
 			end
 		end

@@ -143,6 +143,10 @@ return function(WM)
 			vr_system_message("routate mouse mode");
 			WM.mouse_handler = rotate_selected;
 		elseif (val == "ipd") then
+			if (not WM.vr_state or not WM.vr_state.ipd_target) then
+				return;
+			end
+
 			if (WM.mouse_handler == step_ipd_distort) then
 				WM.vr_state.ipd_target = (WM.vr_state.ipd_target + 1) % (#ipd_modes);
 			else

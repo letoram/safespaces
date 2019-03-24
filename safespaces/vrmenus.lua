@@ -336,6 +336,22 @@ local function gen_face_menu(wnd, layer, model)
 	return res;
 end
 
+local function gen_event_menu(wnd, layer, model)
+	return {
+		{
+			name = "destroy",
+			label = "Destroy",
+			kind = "value",
+			hint = "action/path/to/bind",
+			description = "Trigger this path on model destruction",
+			handler = function(ctx, val)
+				print("on destroy set to ", val)
+				table.insert(model.on_destroy, val);
+			end
+		}
+	};
+end
+
 local function model_settings_menu(wnd, layer, model)
 	local res = {
 	{
@@ -445,6 +461,17 @@ local function model_settings_menu(wnd, layer, model)
 			model:set_curvature(tonumber(val));
 		end,
 		validator = gen_valid_num(-0.5, 0.5),
+	},
+	{
+		name = "events",
+		label = "Events",
+		kind = "action",
+		submenu = true,
+		description = "Bind event triggers",
+		handler = function()
+			print("return submenu for destroy")
+			return gen_event_menu(wnd, layer, model);
+		end
 	},
 	{
 		name = "stereoscopic",
@@ -820,7 +847,7 @@ local function load_space(wnd, prefix, path)
 	local dispatch = wnd.default_layouter;
 	wnd.default_layouter = function() end;
 	for i,v in ipairs(cmds) do
-		dispatch_symbol("#" .. v);
+		dispatch_symbol(v);
 	end
 
 	wnd.default_layouter = dispatch;
