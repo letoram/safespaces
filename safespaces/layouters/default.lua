@@ -22,7 +22,7 @@ return function(layer)
 -- make sure we have one element that is selected and visible
 	if (not layer.selected) then
 		for i,v in ipairs(root) do
-			if (v.active) then
+			if (v:can_layout()) then
 				v:select();
 				break;
 			end
@@ -68,7 +68,7 @@ return function(layer)
 -- special case, @12-o-clock (0.5pi) the object is already centered,
 -- so only step by half
 		if (in_first) then
-			if (v.active) then
+			if (v:can_layout()) then
 				dphi_ccw = dphi_ccw + half_len;
 				dphi_cw = dphi_cw - half_len;
 				ang = h_pi;
@@ -79,7 +79,7 @@ return function(layer)
 
 -- dphi_(c)cw points at where the model should begin or end
 		elseif (i % 2 == 0) then
-			if (v.active) then
+			if (v:can_layout()) then
 				dphi_ccw = dphi_ccw + half_len;
 				x,z = ptoc(dphi_ccw);
 				ang = getang(dphi_ccw);
@@ -88,7 +88,7 @@ return function(layer)
 				x,z = ptoc(dphi_ccw);
 			end
 		else
-			if (v.active) then
+			if (v:can_layout()) then
 				dphi_cw = dphi_cw - half_len;
 				x,z = ptoc(dphi_cw);
 				ang = getang(dphi_cw);
@@ -99,7 +99,7 @@ return function(layer)
 		end
 
 -- unresolved, what to do if n_x or p_x reach pi?
-		if (v.active) then
+		if (v:can_layout()) then
 			if (math.abs(v.layer_pos[1] - x) ~= 0.0001) or
 				(math.abs(v.layer_pos[3] - z) ~= 0.0001) or
 				(math.abs(v.layer_ang ~= ang) ~= 0.0001) then
@@ -140,7 +140,7 @@ return function(layer)
 			rotate3d_model(j.vid, 0, 0, la, as)
 			local sx, sy, sz = j:get_scale();
 			scale3d_model(j.vid, sx, sy, 1, as);
-			if (j.active) then
+			if (j:can_layout()) then
 				pw, ph, pd = j:get_size();
 				of_y = of_y + mf * (ph + layer.vspacing);
 				move3d_model(j.vid, lp[1], lp[2] + of_y, lp[3] - dz, as);
@@ -157,7 +157,7 @@ return function(layer)
 			rotate3d_model(j.vid, 0, 0, la, as)
 			local sx, sy, sz = j:get_scale();
 			scale3d_model(j.vid, sx, sy, 1, as);
-			if (j.active) then
+			if (j:can_layout()) then
 				pw, ph, pd = j:get_size();
 				of_y = of_y + mf * (ph + layer.vspacing);
 				move3d_model(j.vid, lp[1], lp[2] - of_y, lp[3] - dz, as);

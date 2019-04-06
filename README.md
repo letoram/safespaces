@@ -238,8 +238,8 @@ Milestone 1:
       - [x] Over-and-Under
       - [x] Swap L/R Eye
 			- [ ] Split (left- right sources)
- - [ ] Events
-      - [ ] On Destroy
+ - [x] Events
+      - [x] On Destroy
 
 - [x] Layouters
   - Tiling / Auto

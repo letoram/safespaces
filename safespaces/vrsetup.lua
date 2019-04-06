@@ -890,6 +890,26 @@ local function model_vswap(model, step)
 	end
 end
 
+local function model_move(model, x, y, z)
+	model.layer_pos[1] = x;
+	model.layer_pos[2] = y;
+	model.layer_pos[3] = z;
+	move3d_model(model.vid,
+		model.layer_pos[1], model.layer_pos[2], model.layer_pos[3]);
+end
+
+local function model_nudge(model, x, y, z)
+	model.layer_pos[1] = model.layer_pos + x;
+	model.layer_pos[2] = model.layer_pos + y;
+	model.layer_pos[3] = model.layer_pos + z;
+	move3d_model(model.vid,
+		model.layer_pos[1], model.layer_pos[2], model.layer_pos[3]);
+end
+
+local function model_can_layout(model)
+	return model.active and not model.layout_block
+end
+
 local function model_get_displayhint_size(model)
 	local bw = model.ctx.near_layer_sz * (model.layer.index > 1 and
 		((model.layer.index-1) * model.ctx.layer_falloff) or 1);
@@ -930,6 +950,8 @@ local function build_model(layer, kind, name, ref)
 		scale = model_scale,
 		show = model_show,
 		vswap = model_vswap,
+		move = model_move,
+		nudge = model_nudge,
 		swap_parent = model_swapparent,
 		get_size = model_getsize,
 		get_scale = model_getscale,
@@ -942,7 +964,8 @@ local function build_model(layer, kind, name, ref)
 		set_curvature = model_curvature,
 		set_scale_factor = model_scale_factor,
 		set_display_source = model_display_source,
-		preprocess_input = model_input
+		preprocess_input = model_input,
+		can_layout = model_can_layout
 	};
 
 	local model;

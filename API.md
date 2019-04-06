@@ -129,15 +129,18 @@ Or through the currently selected:
 
 From this path you have access to the following properties and actions:
 
-    rotate=fff   : set absolute rotation for the object around x, y and z axis
-    spin=fff     : relative adjust the rotation for the model
-    scale=f      : set the absolute scale value fore the model
-    opacity=f    : force-toggle blending for the entire model (0..1)
-    curvature=f  : for models that can be bent (rectangle), adjust curvature
-    flip=b       : change the source mapping from UL origo to LL origo (y-axis flip)
-    source_inv=s : specify a resource image to map to the object (y-inv)
-    source=s     : specify a resource image to map to the object
-    stereoscopic=: (none, sbs, sbs-rl, oau, oau-rl) treat the source material as stereoscopic
+    rotate=fff    : set absolute rotation for the object around x, y and z axis
+    spin=fff      : relative adjust the rotation for the model
+    scale=f       : set the absolute scale value fore the model
+    opacity=f     : force-toggle blending for the entire model (0..1)
+    curvature=f   : for models that can be bent (rectangle), adjust curvature
+    flip=b        : change the source mapping from UL origo to LL origo (y-axis flip)
+    source_inv=s  : specify a resource image to map to the object (y-inv)
+    source=s      : specify a resource image to map to the object
+    stereoscopic= : (none, sbs, sbs-rl, oau, oau-rl) treat the source material as stereoscopic
+    layout_block=b: block model from layouter or not
+    move=fff      : set layer-anchor relative position
+    nudge=fff     : like move=fff but relative its current position
 
     faces/       : like source= for objects with multiple faces (cubes, spheres, ...)
     events/      : actions to run on certain events

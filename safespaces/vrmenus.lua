@@ -469,8 +469,45 @@ local function model_settings_menu(wnd, layer, model)
 		submenu = true,
 		description = "Bind event triggers",
 		handler = function()
-			print("return submenu for destroy")
 			return gen_event_menu(wnd, layer, model);
+		end
+	},
+	{
+		name = "nudge",
+		label = "Nudge",
+		kind = "value",
+		validator = suppl_valid_typestr("fff", -10, 10, 0),
+		description = "Move Relative (x y z)",
+		handler = function(ctx, val)
+			local res = suppl_unpack_typestr("fff", val, -10, 10);
+			if (res) then
+				model:nudge(res[1], res[2], res[3]);
+			end
+		end
+	},
+	{
+		name = "move",
+		label = "Move",
+		kind = "value",
+		validator = suppl_valid_typestr("fff", -10000, 10000, 0),
+		description = "Set layer anchor-relative position",
+		handler = function(ctx, val)
+			local res = suppl_unpack_typestr("fff", val, -10, 10);
+			if (res) then
+				model:move(res[1], res[2], res[3]);
+			end
+		end
+	},
+	{
+		name = "layout_block",
+		label = "Layout Block",
+		kind = "value",
+		initial = function()
+			return model.layout_block and "yes" or "no"
+		end,
+		set = {"true", "false"},
+		handler = function(ctx, val)
+			model.layout_block = val == "true"
 		end
 	},
 	{
