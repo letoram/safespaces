@@ -24,17 +24,21 @@ You should also be able to run that tool from the command-line to test the rotat
 tracking and control of your head mounted display (HMD).
 
 This usually requires some kind of adjustments to permissions, as it requires
-direct access to USB device control. When you have that tool working, you need
-to tell arcan to use it for VR support:
+direct access to USB device control. When you have that tool working, you will
+want to tell arcan to use it for VR support:
 
     arcan_db add_appl_kv arcan ext_vr /path/to/arcan_vr
+
+If you don't, it will still try to find the arcan\_vr binary in the regular bin
+folders (for system- technical reasons it does not rely on PATH but rather hard
+priority of usr/local/bin then usr/bin before giving up).
 
 This tool act as our device control interface, so if there are more sensor devices
 you want to add, this is where it can be done. The idea is that each vr-bridge
 instance exposes a skeletal model (joints, eyes, ...) that you populate with
 whatever devices you happen to have. These are advertised to the active scripts
-(safespaces here) which then determine react accordingly by mapping to models,
-cameras, gesture classifiers and other abstract objects.
+(safespaces here) which then react accordingly by mapping to models, cameras,
+gesture classifiers and other abstract objects.
 
 ## Device Profile
 There is great variety in how HMD devices work, behave, and what extra controls
@@ -75,6 +79,7 @@ There are some special built-in profiles:
 * 'desktop'    : 3D desktop only, no vr devices or stereoscopic rendering
 * 'basic'      : Just draw to the default display
 * 'headless'   : Stereoscopic rendering, no VR devices
+* 'test'       : Like desktop, but with the console on the left-hand side
 
 'Basic' is useful if you are trying to run arcan as a normal client with an
 outer display server like Xorg or on OS X. It draws as a normal window and
@@ -212,7 +217,7 @@ Milestone 1:
     - [ ] Validation
   - [x] Mouse
   - [x] Keyboard
-	- [ ] Front-Camera composition
+  - [ ] Front-Camera composition
 
 - [ ] Models
   - [x] Primitives
@@ -227,9 +232,8 @@ Milestone 1:
       - [x] Basic mesh
       - [x] half-cylinder
     - [x] Rectangle
-		  - [ ] Border/Background
-		- [x] Custom Mesh (.ctm)
-    - [ ] GlTF2
+    - [ ] Border/Background
+    - [ ] GlTF2 (.bin)
       - [ ] Simple/Textured Mesh
       - [ ] Skinning/Morphing/Animation
       - [ ] Physically Based Rendering
@@ -237,7 +241,7 @@ Milestone 1:
       - [x] Side-by-Side
       - [x] Over-and-Under
       - [x] Swap L/R Eye
-			- [ ] Split (left- right sources)
+      - [ ] Split (left- right sources)
  - [x] Events
       - [x] On Destroy
 
@@ -253,19 +257,22 @@ Milestone 1:
     - [x] Vertical hierarchies
     - [x] Connection- activated models
 
- - Staatic / Manual
-		- [ ] Curved Plane
+ - Static / Manual
+    - [ ] Curved Plane
     - [ ] Drag 'constraint' solver (collision avoidance)
     - [ ] Draw to Spawn
 
 - [ ] Clients
   - [x] Built-ins (terminal/external connections)
-	- [ ] Launch targets
+  - [ ] Launch targets
   - [x] Xarcan
   - [x] Wayland-simple (toplevel/fullscreen only)
+	  - [ ] Xwayland
+		- [ ] full xdg-toplevel
 
 - [ ] Tools
   - [ ] Basic 'listview' popup
+  - [ ] Console
 
 Milestone 2:
 
@@ -285,12 +292,12 @@ Milestone 2:
   - [ ] Positional Tracking / Tools
   - [ ] Dedicated Handover/Leasing
   - [ ] Reprojection
-	- [ ] Mouse
-	  - [ ] Gesture Detection
-		- [ ] Sensitivity Controls
-	- [ ] Keyboard
-	  - [ ] Repeat rate controls
-		- [ ] Runtime keymap switching
+  - [ ] Mouse
+  - [ ] Gesture Detection
+  - [ ] Sensitivity Controls
+  - [ ] Keyboard
+    - [ ] Repeat rate controls
+    - [ ] Runtime keymap switching
   - [ ] Multiple- HMDs
     - [ ] Passive
     - [ ] Active
@@ -319,10 +326,10 @@ Milestone 3:
 
 - [ ] Networking
   - [ ] Share Space
-	- [ ] Dynamic Resource Streaming
-	- [ ] Avatar Synthesis
-	- [ ] Filtered sensor state to avatar mapping
-	- [ ] Voice Chat
+  - [ ] Dynamic Resource Streaming
+  - [ ] Avatar Synthesis
+  - [ ] Filtered sensor state to avatar mapping
+  - [ ] Voice Chat
 
 - [ ] Clients
   - [ ] Alternate Representations

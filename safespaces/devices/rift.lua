@@ -1,10 +1,10 @@
 return {
 	display = '^Rift/WMHD',
-	oversample_w = 0.8,
-	oversample_h = 0.8,
+	oversample_w = 1.0,
+	oversample_h = 1.0,
 	distortion_model = "basic",
 	prelaunch = true,
-	ipd = 20
+-- rift returns a larger width, causing the positions to be wrong
 -- metadata overrides
 -- width = .. (0.5width*oversample_w)
 -- height = ..

@@ -14,13 +14,14 @@ To map to normal window management concepts, a space can be thought of as
 a more radical 'workspace', and a layer as a 'tag' or group of addressable
 windows.
 
-# System Windows
+# System
 
      /toggle_grab : when arcan is running in windowed mode, activating
                     this path toggles mouse grab on / off which might be
                     needed in som environments.
 
      /shutdown : immediately kill all clients and terminate
+     /switch/  : collapse safespaces and move clients to a new appl
 
      /mouse=
           selected : input forwarded to selected model
@@ -127,7 +128,7 @@ Or through the currently selected:
 
     /layers/current/models/selected/
 
-From this path you have access to the following properties and actions:
+From this path you have access to the following properties:
 
     rotate=fff    : set absolute rotation for the object around x, y and z axis
     spin=fff      : relative adjust the rotation for the model

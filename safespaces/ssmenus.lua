@@ -30,6 +30,7 @@ end
 local ipd_modes = {
 	{"IPD",
 function(WM, vr_state, delta, m1, m2)
+		console_log("stepping ipd")
 		vr_state.meta.ipd = vr_state.meta.ipd + delta * get_fact(0.1, 10, 0.01, m1, m2);
 		move3d_model(vr_state.l, vr_state.meta.ipd * 0.5, 0, 0);
 		move3d_model(vr_state.r, -vr_state.meta.ipd * 0.5, 0, 0);
@@ -120,6 +121,25 @@ local function rotate_selected(WM, iotbl)
 		model.rel_ang[1], model.rel_ang[2], model.rel_ang[3] + model.layer_ang);
 end
 
+local function gen_appl_menu()
+	local res = {};
+	local tbl = glob_resource("*", SYS_APPL_RESOURCE);
+	for i,v in ipairs(tbl) do
+		table.insert(res, {
+			name = "switch_" .. tostring(i);
+			label = v,
+			description = "Switch appl to " .. v,
+			dangerous = true,
+			kind = "action",
+			handler = function()
+				safespaces_shutdown();
+				system_collapse(v);
+			end,
+		});
+	end
+	return res;
+end
+
 return function(WM)
 	table.insert(WM.menu,
 {
@@ -130,6 +150,8 @@ return function(WM)
 	set = {"Selected", "View", "Scale", "Rotate", "IPD"},
 	handler = function(ctx, val)
 		val = string.lower(val);
+		console_log("mouse", "mapping changed to " .. val);
+
 		if (val == "selected") then
 			vr_system_message("selected window mouse mode");
 			WM.mouse_handler = nil;
@@ -143,10 +165,10 @@ return function(WM)
 			vr_system_message("routate mouse mode");
 			WM.mouse_handler = rotate_selected;
 		elseif (val == "ipd") then
-			if (not WM.vr_state or not WM.vr_state.ipd_target) then
+			if (not WM.vr_state) then
+				console_log("warning", "window manager lacks vr state");
 				return;
 			end
-
 			if (WM.mouse_handler == step_ipd_distort) then
 				WM.vr_state.ipd_target = (WM.vr_state.ipd_target + 1) % (#ipd_modes);
 			else
@@ -179,4 +201,18 @@ return function(WM)
 		return shutdown("", EXIT_SUCCESS);
 	end
 });
+
+	table.insert(WM.menu,
+	{
+		name = "switch",
+		kind = "action",
+		submenu = true,
+		description = "Switch to another appl",
+		eval = function()
+			return #glob_resource("*", SYS_APPL_RESOURCE) > 0;
+		end,
+		handler = function()
+			return gen_appl_menu();
+		end
+	});
 end

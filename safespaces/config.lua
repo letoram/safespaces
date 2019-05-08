@@ -13,6 +13,10 @@ return {
 	animation_speed = 10,
 	prefix = "",
 
+-- console logging
+	console_preview = true,
+	console_lines = 30,
+
 -- Special application settings
 	terminal_font = "hack.ttf",
 	terminal_font_sz = 28,

@@ -15,6 +15,17 @@ return {
 "layers/layer_bg/models/bg/faces/5/source=skyboxes/corona/4.png", -- +z
 "layers/layer_bg/models/bg/faces/6/source=skyboxes/corona/5.png", -- -z
 
+-- add another cylinder-180 that can do sbs
+"layers/add=vid",
+"layers/layer_vid/settings/depth=40.0",
+"layers/layer_vid/settings/radius=40.0",
+"layers/layer_vid/settings/fixed=true",
+"layers/layer_vid/add_model/halfcylinder=vr180",
+"layers/layer_vid/models/vr180/set_default",
+"layers/layer_vid/models/vr180/flip=true",
+"layers/layer_vid/models/vr180/connpoint/reveal_focus=vr180sbs",
+"layers/layer_vid/models/vr180/scale=4",
+
 -- an interactive foreground layer with a transparent terminal
 "layers/add=fg",
 "layers/layer_fg/settings/active_scale=3",

@@ -157,6 +157,7 @@ local function set_vr_defaults(ctx, opts)
 		oversample_w = 1.4,
 		oversample_h = 1.4,
 		hmdarg = "",
+		invert_y = false,
 	};
 	for k,v in pairs(tbl) do
 		ctx[k] = (opts[k] and opts[k]) or tbl[k];
@@ -286,7 +287,9 @@ local function setup_vr_display(wnd, callback, opts)
 		end
 
 		local l_eye = alloc_surface(eye_rt_w, eye_rt_h);
+		image_tracetag(l_eye, "left_eye");
 		local r_eye = alloc_surface(eye_rt_w, eye_rt_h);
+		image_tracetag(r_eye, "right_eye");
 		if (opts.left_coordinates) then
 			image_set_txcos(l_eye, opts.left_coordinates);
 		end
@@ -325,6 +328,7 @@ local function setup_vr_display(wnd, callback, opts)
 		local combiner;
 		if (not opts.no_combiner) then
 			combiner = alloc_surface(dispw, disph);
+			image_tracetag(combiner, "combiner");
 			show_image(combiner);
 			if (valid_vid(wnd.anchor)) then
 				link_image(combiner, wnd.anchor);
@@ -1635,10 +1639,10 @@ end
 return function(ctx, surf, opts)
 	set_defaults(ctx, opts);
 
--- render to texture, so flip y, camera is also used as a resource
--- anchor for destroying everything else
+-- invert y depends a bit on how the rendertarget is mapped, the simple
+-- version is to just flip of the profile requests it
 	local cam = null_surface(1, 1);
-	scale3d_model(cam, 1.0, -1.0, 1.0);
+	scale3d_model(cam, 1.0, opts.inv_y and 1.0 or -1.0, 1.0);
 
 -- we may need to use the default 'render to world' when running
 -- monoscopic in a windowed mode

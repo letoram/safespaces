@@ -1,14 +1,19 @@
 -- placeholder, may be set if we need to wait for a specific display
 local display_action = function() end
 WM = {};
-local debugf = print;
 local SYMTABLE;
-local debug_verbose = DEBUGLEVEL > 0;
+local debug_verbose = 1;
 local wait_for_display;
+
+-- log all actions to the console
+local function console_forward(...)
+	console_log("dispatch", string.format(...));
+end
 
 function safespaces(args)
 	system_load("suppl.lua")();
 	local vrsetup = system_load("vrsetup.lua")();
+	system_load("console.lua")();
 
 -- map config to keybindings, and load keymap (if specified)
 	local config = system_load("config.lua")();
@@ -33,7 +38,6 @@ function safespaces(args)
 		return shutdown(
 			"No device specified (in config.lua or device=... arg)", EXIT_FAILURE);
 	end
-	warning("using device profile: " .. device);
 	local dev = system_load("devices/" .. device .. ".lua")();
 	if (not dev) then
 		return shutdown(
@@ -51,24 +55,43 @@ function safespaces(args)
 		end
 	end
 
+	if (dev.debug_verbose) then
+		debug_verbose = dev.debug_verbose
+	end
+
+-- since we can't reliably log output, map it to a virtual console
+	console_setup(config);
+
+	if (dev.disable_vrbridge) then
+		preview = alloc_surface(VRESW * (dev.primary_console and 0.5 or 1.0), VRESH);
+	else
 -- just need a container pipeline, resize this if monoscopic 'normal 3D' output
 -- is needed, otherwise the setup_vr callback will provide a combiner rendertarget
 -- to map to displays, or the individual left/right eye paths.
-	local preview;
-	if (dev.disable_vrbridge) then
-		preview = alloc_surface(VRESW, VRESH);
-		show_image(preview);
-	else
-		preview = alloc_surface(32, 32);
+		preview = alloc_surface(320, 200);
 	end
 
--- reuild the WM context to add the basic VR setup / management functions
+	image_tracetag(preview, "preview");
+-- rebuild the WM context to add the basic VR setup / management functions
 	vrsetup(WM, preview, config);
 
 -- append the menu tree for accessing / manipulating the VR setup
 	WM.menu = (system_load("vrmenus.lua")())(WM, prefix);
 	WM.mouse_mode = "direct";
 	(system_load("ssmenus.lua")())(WM);
+
+-- if we are running without the vr bridge, just map the preview pipeline to
+-- the default output, this is the default for the desktop profile
+	if (dev.disable_vrbridge) then
+
+-- for the testing profile, we map the console first and then attach the preview
+		if (dev.primary_console) then
+			map_video_display(console_output(), 0);
+			console_add_view(preview);
+		else
+			map_video_display(preview, 0);
+		end
+	end
 
 	dispatch_meta = function()
 		return SYMTABLE.mstate[1], SYMTABLE.mstate[2]
@@ -80,12 +103,12 @@ function safespaces(args)
 		if (ns == "#" or ns == "!") then
 			sym = string.sub(sym, 2)
 		end
-		suppl_run_menu(WM.menu, sym, debugf, debug_verbose)
+		suppl_run_menu(WM.menu, sym, console_forward, debug_verbose)
 	end
 
 -- load the default space or whatever was provided as the argument
 	local space = argtbl.space and argtbl.space or "default.lua";
-	suppl_run_menu(WM.menu, "space=" .. space, debugf, debug_verbose);
+	suppl_run_menu(WM.menu, "space=" .. space, console_forward, debug_verbose);
 
 -- wait for device display to become available, in that case we want a combiner
 -- stage, otherwise we might be running in windowed mode and want to compose on
@@ -121,7 +144,8 @@ function safespaces(args)
 end
 
 wait_for_display = function(dev, dstid)
-	warning("waiting for display: " .. dev.display);
+	console_log("display", "waiting for: " .. dstid);
+
 	local old_tick = safespaces_clock_pulse;
 	local refresh_timer = 200;
 
@@ -135,13 +159,17 @@ wait_for_display = function(dev, dstid)
 	end
 
 -- when a display arrives that match the known/desired display,
--- map the VR combiner stage to it
+-- map the VR combiner stage to it and map the console to the default display
 	display_action = function(name, id)
-		warning(string.format("display(%s): detected", name));
+		console_log("display", "detected: " .. name);
+
 		if (string.match(name, dev.display)) then
 			safespaces_clock_pulse = old_tick;
 			if (dstid) then
+				console_log("display", "mapped to: " .. tostring(dstid));
+				map_video_display(console_output(), 0)
 				map_video_display(dstid, id);
+
 			else
 				WM:setup_vr(
 				function(ctx, vid, a, b)
@@ -174,6 +202,7 @@ function safespaces_input(iotbl)
 -- apply keymap, check binding state
 	elseif (iotbl.translated) then
 		local sym, lutsym = SYMTABLE:patch(iotbl);
+
 		if (sym == SYMTABLE.meta_1) then
 			SYMTABLE.mstate[1] = iotbl.active;
 		elseif (sym == SYMTABLE.meta_2) then
@@ -191,9 +220,13 @@ function safespaces_input(iotbl)
 				sym = "m2_" .. sym
 			end
 
+			if (debug_verbose > 1) then
+				console_log("input", sym);
+			end
+
 			local path = SYMTABLE.bindings[sym];
 			if (path) then
-				suppl_run_menu(WM.menu, path, debugf, debug_verbose);
+				suppl_run_menu(WM.menu, path, console_forward, debug_verbose);
 				return;
 			end
 		end

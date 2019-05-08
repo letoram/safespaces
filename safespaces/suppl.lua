@@ -186,7 +186,13 @@ function suppl_display_name(id)
 -- first mapping nonsense has previously made it easier (?!)
 -- getting a valid EDID in some cases
 	local name = id == 0 and "default" or "unkn_" .. tostring(id);
-	map_video_display(WORLDID, id, HINT_NONE);
+
+-- this is not particularly nice as it changes the use counter and possibly
+-- the composition path, but if we don't match it we might get bad EDIDs
+	if id ~= 0 then
+		map_video_display(WORLDID, id, HINT_NONE);
+	end
+
 	local model, serial = display_data(id);
 	if (model) then
 		name = string.split(model, '\r')[1] .. "/" .. serial;
