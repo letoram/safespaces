@@ -93,6 +93,12 @@ config.lua file. Look at it. Especially the 'Input Controls' section with
 its meta keys and its bindings as it will tell you how to shutdown, which
 is quite important.
 
+In fact, to save you from not being able to shutdown properly before knowing
+the keybinding, we have made it so that when the initial terminal surface is
+destroyed, by exiting from within the shell or through a keybinding, safespaces
+will exit. When you feel comfortable, see the section on 'spaces' below for
+instructions on how to remove that feature.
+
 The binding format is simply:
 
     ["modifiers_SYMBOL"] = "api/path"
@@ -186,6 +192,74 @@ The source for this tool can be found in src/tools/aloadimage, and should
 work as a template for writing your own arcan/safespaces compliant VR
 clients.
 
+## Troubleshooting
+
+Chances are that safespaces will only give you a black screen or return to the
+command-line. This comes from how complex and varying the lower layer graphics
+system actually works, combined with the 'display but not a normal display'
+properties of the HMD itself. Some tips for getting further:
+
+1. Start with the device=test profile and a normal monitor (no HMD connected)
+
+Assuming no X server or worse yet, display manager, is running and that you
+only work from the TTY. Make sure to pipe the arcan output to a log file as
+the normal stdout text has to be disabled for graphics to work, and the log
+might contain valuable clues.
+
+    arcan safespaces device=test &> log
+
+If you have an NVIDIA card and not AMD or Intel, chances are their driver is
+still such a steaming pile that it is not worth pursuing further until they
+clean up their act. We are fine with them requiring EGLStreams and binary blobs
+and custom scanout paths, but if they do, at the very least these layers should
+work reliably and robustly, which is far from the truth currently. As a user,
+ask the developers of their unix driver for help debugging / troubleshooting.
+
+This makes sure that the 3D pipeline, normal display scanout, etc. is working
+correctly. You can also test your keys and keybindings here so it is a useful
+feature to know about. If this stage is not working, the problem can be with
+your kernel, graphics driver, permissions and so on. In order to switch the
+
+2. Use the device=desktop profile and a normal monitor (no HMD connected)
+
+This just makes sure that the 3D pipeline also works when it is uniquely
+mapped to a display and not composited like with the test profile. If this does
+not work, the troubleshooting is the same as with 1. A debug build of arcan
+itself (cmake with -DCMAKE\_BUILD\_TYPE=Debug will produce a more verbose log,
+as will starting with multiple -g arguments on the command line.
+
+3. Try the device=basic profile with your hmd and normal monitor connected.
+
+This will give you a stereoscopic view on your normal monitor, but it will
+try to get the orientation from the HMD. Try rotating the HMD, and look on
+your monitor, does the tracking work?
+
+If not, the problem is either that arcan\_vr is not running correctly, your
+HMD is not supported or your user do not have permission to access the
+device. Try running arcan\_vr separately, do you get proper rotation output
+there? If it does, then it is probably the case that arcan did not find the
+arcan\_vr binary correctly, see if a process with that name is running.
+If you do not get proper results from arcan\_vr, the problem likely lies
+with OpenHMD.
+
+Check the status with their git repository, check if you have built arcan\_vr
+statically with an in-source OpenHMD or through the shared version as our
+version is slightly patched.
+
+4. Finally use the device profile for your actual HMD.
+
+There are a few reasons why, after everything, this stage still refuses to
+work. The reason being that there is a big difference between what display is
+found "first" and if that is your HMD or not. So for some configurations you
+might have success with no screen plugged in, only your HMD. In others,
+plugging in your HMD after you have started safespaces might help.
+
+Part of the reason why this might be a problem is that some displays behave in
+one way when plugged in 'as normal', then act as a 'hotplug' when the VR bridge
+sends a wakeup command. Then safespaces need to pair the display being plugged
+with displays that 'appear', which might not actually be the HMD in question
+when you have more complicated setups.
+
 ## X, Wayland
 
 To support running legacy applications using the X or Wayland protocols,
@@ -198,6 +272,10 @@ src/tools/waybridge folder, which implements the server side of the Wayland
 protocol. Normally, it should simply be runnable via:
 
     arcan-wayland -exec my_wayland_client
+
+You can also run X clients 'rootless' via Xwayland. You do that like this:
+
+    arcan-wayland -xwl -exec my_x_client
 
 ## Roadmap
 

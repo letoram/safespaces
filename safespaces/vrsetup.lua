@@ -1,3 +1,5 @@
+local setup_event_handler = system_load("vr_atypes.lua")()
+
 -- compatibility workaround
 if not TD_HINT_FULLSCREEN then
 	TD_HINT_FULLSCREEN = 16;
@@ -62,6 +64,15 @@ uniform int rtgt_id;
 uniform bool stereo;
 varying vec2 texco;
 
+float depth_linear(float depth)
+{
+	float z = depth * 2.0 - 1.0;
+/* don't have access to the near/far so just guess, only for debug */
+	float near = 0.1;
+	float far = 100.0;
+	return ((2.0 * near * far) / (far + near - z * (far - near))) / far;
+}
+
 void main()
 {
 	vec4 col;
@@ -69,11 +80,10 @@ void main()
 		col = texture2D(map_tu1, texco);
 	}
 		col = texture2D(map_tu0, texco);
-	gl_FragColor = vec4(col.rgb, col.a * obj_opacity);
+		gl_FragColor = vec4(col.rgb, col.a * obj_opacity);
+//	gl_FragColor = vec4(vec3(1.0 - depth_linear(gl_FragCoord.z)), 1.0);
 }
 ]];
-
-local modelconn_eventhandler;
 
 -- shader used on each eye, one possible place for distortion but
 -- probably better to just use image_tesselation to displace the
@@ -356,8 +366,8 @@ local function setup_vr_display(wnd, callback, opts)
 			md.right_ar = eye_w / eye_h;
 		end
 
-		camtag_model(cam_l, 0.01, 100.0, l_fov, md.left_ar, true, true, 0, l_eye);
-		camtag_model(cam_r, 0.01, 100.0, r_fov, md.right_ar, true, true, 0, r_eye);
+		camtag_model(cam_l, 0.1, 100.0, l_fov, md.left_ar, true, true, 0, l_eye);
+		camtag_model(cam_r, 0.1, 100.0, r_fov, md.right_ar, true, true, 0, r_eye);
 
 		local dshader = shader_ugroup(vrshaders.distortion);
 
@@ -661,31 +671,9 @@ local function model_destroy(model)
 	layer:relayout();
 end
 
--- in any of the external event handlers, we do this on terminated to make sure
--- that the object gets reactivated properly
-local function apply_connrole(layer, model, source)
-	local rv = false;
-
-	if (model.ext_name) then
-		delete_image(source);
-		model:set_connpoint(model.ext_name, model.ext_kind);
-		rv = true;
-	end
-
-	if (model.ext_kind) then
-		if (model.ext_kind == "reveal" or model.ext_kind == "reveal-focus") then
-			model.active = false;
-			blend_image(model.vid, 0, model.ctx.animation_speed);
-			model.layer:relayout();
-			rv = true;
-
-		elseif (model.ext_kind == "temporary" and valid_vid(model.source)) then
-			model:set_display_source(model.source);
-			rv = true;
-		end
-	end
-
-	return rv;
+local function model_hide(model)
+	model.active = false;
+	model.layer:relayout();
 end
 
 local function model_show(model)
@@ -799,10 +787,11 @@ local function model_connpoint(model, name, kind, nosw)
 	local cp = target_alloc(name,
 	function(source, status)
 		if (status.kind == "connected") then
-			target_updatehandler(source, function(...)
-				return modelconn_eventhandler(model.layer, model, ...);
-			end);
+			local fun = setup_event_handler(model, source, "default");
+			target_updatehandler(source, fun);
+			fun(source, status);
 
+-- respawn the connection point, unless created by a child
 			if (kind == "child") then
 				return model_connpoint(model, name, kind, true);
 			end
@@ -821,6 +810,7 @@ local function model_connpoint(model, name, kind, nosw)
 	end
 
 	if (not valid_vid(cp)) then
+		console_log("system", "could not spawn connection point: " .. name);
 		return;
 	end
 
@@ -953,6 +943,7 @@ local function build_model(layer, kind, name, ref)
 		select = model_select,
 		scale = model_scale,
 		show = model_show,
+		hide = model_hide,
 		vswap = model_vswap,
 		move = model_move,
 		nudge = model_nudge,
@@ -1038,6 +1029,7 @@ local function set_defaults(ctx, opts)
 		layer_falloff = 0.9,
 		terminal_font = "hack.ttf",
 		terminal_font_sz = 18,
+		terminal_opacity = 1,
 		animation_speed = 5,
 		curve = 0.5,
 		subdiv_factor = {1.0, 0.4},
@@ -1106,215 +1098,6 @@ local function layer_select(layer)
 -- here we can set alpha based on distance as well
 end
 
-local clut;
-local function model_eventhandler(wnd, model, source, status)
-	if (status.kind == "terminated") then
--- need to check if the model is set to reset to last set /
--- open connpoint or to die on termination
-		if (not apply_connrole(model.layer, model, source)) then
-			model:destroy(EXIT_FAILURE, status.last_words);
-		end
-
-	elseif (status.kind == "segment_request") then
-		local kind = clut[status.segkind];
-		if (not kind) then
-			return;
-		end
-
-		local new_model =
-			model.layer:add_model("rectangle",
-				string.format("%s_ext_%s_%s",
-				model.name, tostring(model.extctr), status.segkind)
-			);
-
-		if (not new_model) then
-			return;
-		end
-
-		local vid = accept_target(
-		function(source, status)
-			return kind(model.layer.ctx, new_model, source, status);
-		end);
-
-		model.extctr = model.extctr + 1;
-		new_model:set_external(vid);
-		new_model.parent = model.parent and model.parent or model;
-	elseif (status.kind == "registered") then
-		model:set_external(source);
-
-	elseif (status.kind == "resized") then
-		image_texfilter(source, FILTER_BILINEAR);
-		model:set_external(source, status.origo_ll);
-		if (status.width > status.height) then
-			model:scale(1, status.height / status.width, 1);
-		else
-			model:scale(status.width / status.height, 1, 1);
-		end
-		model:show();
-	end
-end
-
--- trying to
-local function model_stereo_eventhandler(wnd, model, source, status)
-	if (status.kind == "segment_request") then
-		if (status.segkind == "hmd-r") then
--- don't do anything here, let the primary segment determine behavior
-			local props = image_storage_properties(source);
-			local vid = accept_target(props.width, props.height, function(...) end)
-			if (not valid_vid(vid)) then
-				return;
-			end
-
---			image_framesetsize(source, 2, FRAMESET_MULTITEXTURE);
---			set_image_as_frame(source, vid, 1);
-		end
-	end
-
-	return model_eventhandler(wnd, model, source, status);
-end
-
--- terminal eventhandler behaves similarly to the default, but also send fonts
-local function terminal_eventhandler(wnd, model, source, status)
-	if (status.kind == "preroll") then
-		target_fonthint(source,
-			wnd.terminal_font, wnd.terminal_font_sz * FONT_PT_SZ, 2);
-	else
-		return model_eventhandler(wnd, model, source, status);
-	end
-end
-
--- This is for the bridge connection that probes basic display properties
--- subsegment requests here map to actual wayland surfaces.
-local function wayland_eventhandler(wnd, model, source, status)
-	if (status.kind == "preroll") then
-		local width, height = model:get_displayhint_size();
-		target_displayhint(source, width, height, 0, {ppcm = wnd.display_density});
-		target_flags(source, TARGET_ALLOWGPU);
-
-	elseif (status.kind == "segment_request") then
-		if (status.segkind == "multimedia") then
--- subsurface, let default-reject apply
-		elseif (status.segkind == "cursor") then
--- cursor, don't reject but allow only one
-			if (model.mouse_cursor) then
-				delete_image(model.mouse_cursor);
-			end
-			model.mouse_cursor = accept_target(function(...) end);
-			if (not valid_vid(model.mouse_cursor)) then
-				return;
-			end
-			link_image(model.mouse_cursor, model.vid);
-		elseif (status.segkind == "popup") then
--- popup, default reject
-		elseif (status.segkind == "clipboard") then
--- clipboard, default reject
-		elseif (status.segkind == "application") then
--- actual toplevel, first assign to this model, wait with the splitting
--- out, linking etc. actions until we're later with the project
-			if (valid_vid(model.toplevel)) then
-				delete_image(model.toplevel);
-			end
-			model.toplevel = accept_target(
-			function(source, status)
-				return model_eventhandler(model.ctx, model, source, status);
-			end);
-			if (not valid_vid(model.toplevel)) then
-				return;
-			end
-
--- recall that the bridge is technically still alive, but we don't
--- want it to be the input handler for the model anymore, so replace
--- that..
-			local width, height = model:get_displayhint_size();
-			target_displayhint(source, width, height,
-				TD_HINT_MAXIMIZED, {ppcm = wnd.display_density});
-			model:set_display_source(model.toplevel);
-			link_image(model.toplevel, model.vid);
-
--- yet we still need to relink to the model anchor so we get the cascade
--- deletion cleanup goodness
-			if (model.external == source) then
-				model.external = model.toplevel;
-				link_image(source, model.vid);
-			end
-		end
-	elseif (status.kind == "terminated") then
-		if (model.destroy) then
-			model:destroy();
-		else
-			delete_image(source);
-		end
-	end
-end
-
-clut = {
-	application = model_eventhandler,
-	terminal = terminal_eventhandler,
-	tui = terminal_eventhandler,
-	game = model_eventhandler,
-	multimedia = model_eventhandler,
-	["lightweight arcan"] = model_eventhandler,
-	["bridge-x11"] = model_eventhandler,
-	browser = model_eventhandler,
-	["hmd-l"] = model_stereo_eventhandler,
--- handlers to types that we don't accept as primary now
-	["bridge-wayland"] = wayland_eventhandler,
-	clipboard = nil, -- no clipboard managers
-	popup = nil,
-	icon = nil,
-	titlebar = nil,
-	sensor = nil,
-	service = nil,
-	debug = nil,
-	widget = nil,
-	accessibility = nil,
-	clipboard_paste = nil,
-	handover = nil
-};
-
-modelconn_eventhandler = function(layer, model, source, status)
-	if (status.kind == "registered") then
--- based on segment type, install a new event-handler and tie to a new model
-		local dstfun = clut[status.segkind];
-		if (dstfun == nil) then
-			delete_image(source);
-			return;
-
--- there is an external connection handler that takes over whatever this model was doing
-		elseif (model.ext_kind ~= "child") then
-			target_updatehandler(source, function(source, status)
-				return dstfun(layer.ctx, model, source, status);
-			end);
-			model.external_old = model.external;
-			model.external = source;
-
--- or it should be bound to a new model
-		else
-			local new_model =
-				layer:add_model("rectangle", model.name .. "_ext_" .. tostring(model.extctr));
-
-			model.extctr = model.extctr + 1;
-			target_updatehandler(source, function(source, status)
-				return dstfun(layer.ctx, new_model, source, status);
-			end);
-
-			local parent = model.parent and model.parent or model;
-			new_model.parent = parent;
-			new_model:swap_parent();
-
-			dstfun(layer.ctx, new_model, source, status);
-		end
-	elseif (status.kind == "resized") then
-		model:show();
-	elseif (status.kind == "terminated") then
--- connection point died, should we bother allocating a new one?
-		delete_image(source);
-		if not (apply_connrole(model.layer, model, source)) then
-			model:destroy(EXIT_FAILURE, status.last_words);
-		end
-	end
-end
-
 local term_counter = 0;
 local function layer_add_terminal(layer, opts)
 	opts = opts and opts or "";
@@ -1329,10 +1112,15 @@ local function layer_add_terminal(layer, opts)
 		for i=1,8 do
 			cp = cp .. string.char(string.byte("a") + math.random(1, 10));
 		end
-	local vid = launch_avfeed("env=ARCAN_CONNPATH="..cp..":"..opts, "terminal",
-	function(...)
-		return terminal_eventhandler(layer.ctx, model, ...);
-	end
+
+-- defer the call to setup event-handler as it wants the vid
+	local vid = launch_avfeed(
+		"env=ARCAN_CONNPATH="..cp..":"..opts, "terminal",
+		function(source, status)
+			local fun = setup_event_handler(model, source, "terminal");
+			target_updatehandler(source, fun);
+			fun(source, status);
+		end
 	);
 
 	if (not valid_vid(vid)) then

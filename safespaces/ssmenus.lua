@@ -30,10 +30,10 @@ end
 local ipd_modes = {
 	{"IPD",
 function(WM, vr_state, delta, m1, m2)
-		console_log("stepping ipd")
 		vr_state.meta.ipd = vr_state.meta.ipd + delta * get_fact(0.1, 10, 0.01, m1, m2);
 		move3d_model(vr_state.l, vr_state.meta.ipd * 0.5, 0, 0);
 		move3d_model(vr_state.r, -vr_state.meta.ipd * 0.5, 0, 0);
+		console_log("hmd", "ipd set to " .. tonumber(vr_state.meta.ipd));
 end},
 	{"distort w",
 function(WM, vr_state, delta, m1, m2)
@@ -150,8 +150,6 @@ return function(WM)
 	set = {"Selected", "View", "Scale", "Rotate", "IPD"},
 	handler = function(ctx, val)
 		val = string.lower(val);
-		console_log("mouse", "mapping changed to " .. val);
-
 		if (val == "selected") then
 			vr_system_message("selected window mouse mode");
 			WM.mouse_handler = nil;

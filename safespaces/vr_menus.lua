@@ -136,11 +136,11 @@ end
 
 local function set_source_asynch(wnd, layer, model, subid, source, status)
 	if (status.kind == "load_failed" or status.kind == "terminated") then
-		blend_image(model.vid, model.opacity, model.ctx.animation_speed);
+		blend_image(model.vid, model.opacity, model.ctx.animation_speed, model.ctx.animation_interp);
 		delete_image(source);
 		return;
 	elseif (status.kind == "loaded") then
-		blend_image(model.vid, model.opacity, model.ctx.animation_speed);
+		blend_image(model.vid, model.opacity, model.ctx.animation_speed, model.ctx.animation_interp);
 		if (subid) then
 			set_image_as_frame(model.vid, source, subid);
 		else
@@ -727,7 +727,7 @@ local function get_layer_menu(wnd, layer)
 			description = "Set the layer opacity",
 			validator = gen_valid_num(0.0, 1.0),
 			handler = function(ctx, val)
-				blend_image(layer.anchor, tonumber(val), wnd.animation_speed);
+				blend_image(layer.anchor, tonumber(val), wnd.animation_speed, wnd.animation_interp);
 			end
 		},
 		{
@@ -816,7 +816,7 @@ local function layer_menu(wnd)
 				for i,v in ipairs(wnd.layers) do
 					instant_image_transform(v.anchor);
 					v.dz = v.dz + step;
-					move3d_model(v.anchor, v.dx, v.dy, v:zpos(), wnd.animation_speed);
+					move3d_model(v.anchor, v.dx, v.dy, v:zpos(), wnd.animation_speed, wnd.animation_interp);
 				end
 			end
 		});

@@ -76,7 +76,7 @@ function safespaces(args)
 	vrsetup(WM, preview, config);
 
 -- append the menu tree for accessing / manipulating the VR setup
-	WM.menu = (system_load("vrmenus.lua")())(WM, prefix);
+	WM.menu = (system_load("vr_menus.lua")())(WM, prefix);
 	WM.mouse_mode = "direct";
 	(system_load("ssmenus.lua")())(WM);
 

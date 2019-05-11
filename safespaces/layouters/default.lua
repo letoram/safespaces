@@ -46,6 +46,8 @@ return function(layer)
 	end
 
 	local as = layer.ctx.animation_speed;
+	local interp = layer.ctx.animation_interp and
+		layer.ctx.animation_interp or INTERP_SMOOTHSTEP;
 	local in_first = true;
 
 	for i,v in ipairs(root) do
@@ -104,14 +106,14 @@ return function(layer)
 				(math.abs(v.layer_pos[3] - z) ~= 0.0001) or
 				(math.abs(v.layer_ang ~= ang) ~= 0.0001) then
 
-				move3d_model(v.vid, x, 0, z, as);
+				move3d_model(v.vid, x, 0, z, as, interp);
 				rotate3d_model(v.vid,
 					v.rel_ang[1], v.rel_ang[2], v.rel_ang[3] + ang,
 					as
 				);
 
 				local sx, sy, sz = v:get_scale();
-				scale3d_model(v.vid, sx, sy, 1, as);
+				scale3d_model(v.vid, sx, sy, 1, as, interp);
 			end
 		end
 
@@ -137,13 +139,13 @@ return function(layer)
 		of_y = ph;
 		for i=1,#v,2 do
 			local j = v[i];
-			rotate3d_model(j.vid, 0, 0, la, as)
+			rotate3d_model(j.vid, 0, 0, la, as, interp);
 			local sx, sy, sz = j:get_scale();
-			scale3d_model(j.vid, sx, sy, 1, as);
+			scale3d_model(j.vid, sx, sy, 1, as, interp);
 			if (j:can_layout()) then
 				pw, ph, pd = j:get_size();
 				of_y = of_y + mf * (ph + layer.vspacing);
-				move3d_model(j.vid, lp[1], lp[2] + of_y, lp[3] - dz, as);
+				move3d_model(j.vid, lp[1], lp[2] + of_y, lp[3] - dz, as, interp);
 				dz = dz + 0.01;
 			end
 		end
@@ -154,13 +156,13 @@ return function(layer)
 
 		for i=2,#v,2 do
 			local j = v[i];
-			rotate3d_model(j.vid, 0, 0, la, as)
+			rotate3d_model(j.vid, 0, 0, la, as, interp);
 			local sx, sy, sz = j:get_scale();
-			scale3d_model(j.vid, sx, sy, 1, as);
+			scale3d_model(j.vid, sx, sy, 1, as, interp);
 			if (j:can_layout()) then
 				pw, ph, pd = j:get_size();
 				of_y = of_y + mf * (ph + layer.vspacing);
-				move3d_model(j.vid, lp[1], lp[2] - of_y, lp[3] - dz, as);
+				move3d_model(j.vid, lp[1], lp[2] - of_y, lp[3] - dz, as, interp);
 				dz = dz + 0.01;
 			end
 		end

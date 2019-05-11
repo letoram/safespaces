@@ -10,7 +10,7 @@ return {
 	display_density = 33,
 	curve = 0.9,
 	layer_falloff = 0.9,
-	animation_speed = 10,
+	animation_speed = 30,
 	prefix = "",
 
 -- console logging
@@ -20,6 +20,7 @@ return {
 -- Special application settings
 	terminal_font = "hack.ttf",
 	terminal_font_sz = 28,
+	terminal_opacity = 1,
 
 -- Input Controls
 	meta_1 = "RALT", -- "COMPOSE" or META on some platforms
