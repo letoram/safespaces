@@ -150,7 +150,8 @@ From this path you have access to the following properties:
 And the following actions:
     destroy        : destroy the model and kill any external connections
     merge_collapse : change vertical hierarchy children to horizontal
-    child_swap=i : -n .. +n, swap hierarchy position with its children (positioner hint)
+    cycle_stereo   : step between the different stereoscopic modes
+    child_swap=i   : -n .. +n, swap hierarchy position with its children (positioner hint)
 
 # Connection Points
 

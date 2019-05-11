@@ -352,6 +352,21 @@ local function gen_event_menu(wnd, layer, model)
 	};
 end
 
+local stereo_tbl = {
+	none = {0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0},
+	sbs = {0.0, 0.0, 0.5, 1.0, 0.5, 0.0, 0.5, 1.0},
+	["sbs-rl"] = {0.5, 0.0, 0.5, 1.0, 0.0, 0.0, 0.5, 1.0},
+	["oau-rl"] = {0.0, 0.5, 1.0, 0.5, 0.0, 0.0, 1.0, 0.5},
+	oau = {0.0, 0.0, 1.0, 0.5, 0.0, 0.5, 1.0, 0.5}
+};
+local function model_stereo(model, val)
+	if (stereo_tbl[val]) then
+		model:set_stereo(stereo_tbl[val]);
+	else
+		console_log("missing stereoscopic mode: " .. val);
+	end
+end
+
 local function model_settings_menu(wnd, layer, model)
 	local res = {
 	{
@@ -518,34 +533,28 @@ local function model_settings_menu(wnd, layer, model)
 		set = {"none", "sbs", "sbs-rl", "oau", "oau-rl"},
 
 		handler = function(ctx, val)
-			if (val == "none") then
-				model:set_stereo({
-					0.0, 0.0, 1.0, 1.0,
-					0.0, 0.0, 1.0, 1.0
-				});
-			elseif (val == "sbs") then
-				model:set_stereo({
-					0.0, 0.0, 0.5, 1.0,
-					0.5, 0.0, 0.5, 1.0
-				});
-			elseif (val == "sbs-rl") then
-				model:set_stereo({
-					0.5, 0.0, 0.5, 1.0,
-					0.0, 0.0, 0.5, 1.0
-				});
-			elseif (val == "oau") then
-				model:set_stereo({
-					0.0, 0.0, 1.0, 0.5,
-					0.0, 0.5, 1.0, 0.5
-				});
-			elseif (val == "oau-rl") then
-				model:set_stereo({
-					0.0, 0.5, 1.0, 0.5,
-					0.0, 0.0, 1.0, 0.5
-				});
-			end
+			model_stereo(model, val);
 		end
-		}
+	},
+	{
+		name = "cycle_stereo",
+		label = "Cycle Stereo",
+		kind = "action",
+		description = "Cycle between the different stereo-scopic modes",
+		handler = function(ctx)
+			if not model.last_stereo then
+				model.last_stereo = "none";
+			end
+			local set = {"none", "sbs", "sbs-rl", "oau", "oau-rl"};
+			local ind = table.find_i(set, model.last_stereo);
+			ind = ind + 1;
+			if (ind > #set) then
+				ind = 1;
+			end
+			model.last_stereo = set[ind];
+			model_stereo(model, set[ind]);
+		end
+	}
 	};
 
 -- if the source is in cubemap state, we need to work differently

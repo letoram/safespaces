@@ -212,12 +212,12 @@ function safespaces_input(iotbl)
 				sym = "release_" .. sym
 			end
 
-			if SYMTABLE.mstate[1] then
-				sym = "m1_" .. sym
-			end
-
 			if SYMTABLE.mstate[2] then
 				sym = "m2_" .. sym
+			end
+
+			if SYMTABLE.mstate[1] then
+				sym = "m1_" .. sym
 			end
 
 			if (debug_verbose > 1) then

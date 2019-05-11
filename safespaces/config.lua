@@ -54,6 +54,7 @@ return {
 		["m1_."] = "layers/current/models/selected/split=1",
 		["m1_,"] = "layers/current/models/selected/split=-1",
 		["m1_BACKSPACE"] = "layers/current/models/selected/destroy",
+		["m1_m2_s"] = "layers/current/models/selected/cycle_stereo",
 
 -- device control
 		["m1_r"] = "hmd/reset",
