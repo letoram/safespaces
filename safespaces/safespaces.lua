@@ -1,5 +1,8 @@
 -- placeholder, may be set if we need to wait for a specific display
-local display_action = function() end
+local display_action = function()
+	console_log("display", "action ignored");
+end
+
 WM = {};
 local SYMTABLE;
 local debug_verbose = 1;
@@ -141,6 +144,7 @@ function safespaces(args)
 	end
 
 	WM.dev = dev;
+	console_log("system", "init over");
 end
 
 wait_for_display = function(dev, dstid)
@@ -179,6 +183,8 @@ wait_for_display = function(dev, dstid)
 					map_video_display(vid, id);
 				end, dev);
 			end
+		else
+			console_log("display", "no match for (" .. dev.display .. ")");
 		end
 	end
 end
@@ -243,13 +249,19 @@ end
 
 function safespaces_display_state(action, id)
 	if (action == "reset") then
+		console_log("display", "reset");
 		SYMTABLE.mstate = {false, false};
 
 	elseif (action == "added") then
+		local name = suppl_display_name(id);
+		console_log("display", "added: " .. name);
+
 -- if we are waiting for this display, then go for it
-		display_action( suppl_display_name(id), id );
+		display_action( name, id );
 
 	elseif (action == "removed") then
+		local name = suppl_display_name(id);
+		console_log("display", "removed: " .. name);
 	end
 end
 
