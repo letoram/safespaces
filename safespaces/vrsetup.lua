@@ -79,8 +79,10 @@ void main()
 	if (stereo && rtgt_id == 1){
 		col = texture2D(map_tu1, texco);
 	}
+	else
 		col = texture2D(map_tu0, texco);
-		gl_FragColor = vec4(col.rgb, col.a * obj_opacity);
+
+	gl_FragColor = vec4(col.rgb, col.a * obj_opacity);
 //	gl_FragColor = vec4(vec3(1.0 - depth_linear(gl_FragCoord.z)), 1.0);
 }
 ]];
@@ -374,7 +376,9 @@ local function setup_vr_display(wnd, callback, opts)
 -- ipd is set by moving l_eye to -sep, r_eye to +sep
 		if (md.ipd) then
 			move3d_model(cam_l, md.ipd * 0.5, 0, 0);
+			image_origo_offset(cam_l, md.ipd * 10, 0, 0);
 			move3d_model(cam_r, -md.ipd * 0.5, 0, 0);
+			image_origo_offset(cam_r, -md.ipd * 0.5, 0, 0);
 		end
 
 -- the distortion model has Three options, no distortion, fragment shader
@@ -477,7 +481,17 @@ local function model_display_source(model, vid, altvid)
 		set_image_as_frame(model.vid, vid, model.display_index);
 	else
 		image_sharestorage(vid, model.vid);
+
 		if (valid_vid(altvid)) then
+-- we can't 'extract' the source easily again so track it here instead of say
+-- setting active store and sharing that way
+			if valid_vid(model.alt_container) then
+				delete_image(model.alt_container);
+			end
+			model.alt_container = null_surface(1, 1);
+			image_sharestorage(vid, model.alt_container);
+			link_image(model.alt_container, model.anchor);
+
 			image_framesetsize(model.vid, 2, FRAMESET_MULTITEXTURE);
 			set_image_as_frame(model.vid, altvid, 1);
 		end
@@ -900,6 +914,70 @@ local function model_nudge(model, x, y, z)
 		model.layer_pos[1], model.layer_pos[2], model.layer_pos[3]);
 end
 
+local function model_switch_mesh(model, kind, ref)
+	local cont;
+	local depth = model.layer.depth;
+	local h_depth = depth * 0.5;
+	local shader = vrshaders.geom;
+	local shader_inv  = vrshaders.geom_inv;
+	model.size = {depth, depth, depth};
+
+-- build the mesh itself
+	local mesh;
+	if (kind == "cylinder") then
+		mesh = build_cylinder(h_depth, depth, 360, 1);
+	elseif (kind == "halfcylinder") then
+		mesh = build_cylinder(h_depth, depth, 360, 1, "half");
+	elseif (kind == "sphere") then
+		mesh = build_sphere(h_depth, 360, 360, 1, false);
+	elseif (kind == "hemisphere") then
+		mesh = build_sphere(h_depth, 360, 180, 1, true);
+	elseif (kind == "cube") then
+		mesh = build_3dbox(depth, depth, depth, 1, true);
+		image_framesetsize(mesh, 6, FRAMESET_SPLIT);
+		model.n_sides = 6;
+	elseif (kind == "rectangle") then
+		model.scalev[2] = 0.5625;
+		shader = vrshaders.rect;
+		shader_inv = vrshaders.rect_inv;
+		mesh = build_3dplane(
+			-h_depth, -h_depth, h_depth, h_depth, 0,
+			(depth / 20) * model.ctx.subdiv_factor[1],
+			(depth / 20) * model.ctx.subdiv_factor[2], 1, true
+		);
+	elseif (kind == "custom") then
+		if (not valid_vid(ref)) then
+			console_log("build-model", "custom specified with invalid ref");
+			return;
+		end
+		mesh = ref;
+		model.size = {2, 2, 2}; -- assuming -1..1 in all dimensions
+	end
+
+	if (kind ~= "custom") then
+		swizzle_model(mesh);
+		image_shader(mesh, shader);
+	end
+	model.shader = {normal = shader, flip = shader_inv};
+
+-- move over the old texture storage if necessary, and attach to everything
+	local old = model.vid;
+	model.vid = mesh;
+	link_image(mesh, model.layer.anchor);
+	if (valid_vid(model.ctx.vr_pipe)) then
+		rendertarget_attach(model.ctx.vr_pipe, mesh, RENDERTARGET_DETACH);
+	end
+
+	if (valid_vid(old)) then
+		local oc = model.alt_container;
+		model.alt_container = nil;
+		model:set_display_source(old, oc);
+		delete_image(old);
+	end
+
+	model.mesh_kind = kind;
+end
+
 local function model_can_layout(model)
 	return model.active and not model.layout_block
 end
@@ -916,6 +994,7 @@ local function build_model(layer, kind, name, ref)
 		active = true, -- inactive are exempt from layouting
 		name = name, -- unique global identifier
 		ctx = layer.ctx,
+		layer = layer,
 		extctr = 0, -- external windows spawned via this model
 		parent = nil,
 
@@ -960,63 +1039,18 @@ local function build_model(layer, kind, name, ref)
 		set_scale_factor = model_scale_factor,
 		set_display_source = model_display_source,
 		preprocess_input = model_input,
-		can_layout = model_can_layout
+		can_layout = model_can_layout,
+		switch_mesh = model_switch_mesh
 	};
 
-	local model;
-	local depth = layer.depth;
-	local h_depth = depth * 0.5;
 	local shader = vrshaders.geom;
 	local shader_inv = vrshaders.geom_inv;
-	local size = {depth, depth, depth};
 
-	if (kind == "cylinder") then
-		model = build_cylinder(h_depth, depth, 360, 1);
-	elseif (kind == "halfcylinder") then
-		model = build_cylinder(h_depth, depth, 360, 1, "half");
-	elseif (kind == "sphere") then
-		model = build_sphere(h_depth, 360, 360, 1, false);
-	elseif (kind == "hemisphere") then
-		model = build_sphere(h_depth, 360, 180, 1, true);
-	elseif (kind == "cube") then
-		model = build_3dbox(depth, depth, depth, 1, true);
-		image_framesetsize(model, 6, FRAMESET_SPLIT);
-		res.n_sides = 6;
-	elseif (kind == "rectangle") then
-		res.scalev[2] = 0.5625;
-		shader = vrshaders.rect;
-		shader_inv = vrshaders.rect_inv;
-		model = build_3dplane(
-			-h_depth, -h_depth, h_depth, h_depth, 0,
-			(depth / 20) * layer.ctx.subdiv_factor[1],
-			(depth / 20) * layer.ctx.subdiv_factor[2], 1, true
-		);
-	elseif (kind == "custom") then
-		if (not valid_vid(ref)) then
-			warning("custom model specified but invalid ref");
-			return;
-		end
-		model = ref;
-		size = {2, 2, 2}; -- assuming -1..1 in all dimensions
-	end
+	model_switch_mesh(res, kind, ref);
 
-	if (not valid_vid(model)) then
+	if (not valid_vid(res.vid)) then
 		return;
 	end
-
-	res.shader = {normal = shader, flip = shader_inv};
-	res.size = size;
-	res.vid = model;
-
-	if (kind ~= "custom") then
-		swizzle_model(model);
-		image_shader(model, shader);
-	end
-
-	if (valid_vid(layer.ctx.vr_pipe)) then
-		rendertarget_attach(layer.ctx.vr_pipe, model, RENDERTARGET_DETACH);
-	end
-	link_image(model, layer.anchor);
 
 	return res;
 end

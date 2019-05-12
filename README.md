@@ -250,9 +250,11 @@ version is slightly patched.
 
 There are a few reasons why, after everything, this stage still refuses to
 work. The reason being that there is a big difference between what display is
-found "first" and if that is your HMD or not. So for some configurations you
-might have success with no screen plugged in, only your HMD. In others,
-plugging in your HMD after you have started safespaces might help.
+found "first" and if that is your HMD or not. The kernel driver typically
+blocks VR headsets from taking this spot, but this is through a hardcoded list
+in the driver itself. So for some configurations you might have success with no
+screen plugged in, only your HMD. In others, plugging in your HMD after you
+have started safespaces might help.
 
 Part of the reason why this might be a problem is that some displays behave in
 one way when plugged in 'as normal', then act as a 'hotplug' when the VR bridge

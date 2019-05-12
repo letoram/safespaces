@@ -554,6 +554,41 @@ local function model_settings_menu(wnd, layer, model)
 			model.last_stereo = set[ind];
 			model_stereo(model, set[ind]);
 		end
+	},
+	{
+		name = "mesh_type",
+		label = "Mesh Type",
+		kind = "value",
+		description = "Set a specific mesh type, will reset scale and some other parameters",
+		set = {"cylinder", "halfcylinder", "sphere", "hemisphere", "cube", "rectangle"},
+		eval = function()
+			return model.mesh_kind ~= "custom";
+		end,
+		handler = function(ctx, val)
+			model:switch_mesh(val);
+		end
+	},
+	{
+		name = "cycle_mesh",
+		label = "Cycle Mesh",
+		kind = "action",
+		description = "Switch between the different mesh types",
+		eval = function()
+			return model.mesh_kind ~= "custom";
+		end,
+		handler = function(ctx)
+			local set = {"cylinder", "halfcylinder", "sphere", "hemisphere", "cube", "rectangle"};
+			local i = table.find_i(set, model.mesh_kind);
+			i = i + 1 <= #set and i + 1 or 1;
+			local props = image_surface_properties(model.vid);
+
+			model:switch_mesh(set[i]);
+
+			console_log("model", "mesh type set to " .. set[i]);
+			blend_image(model.vid, props.opacity);
+			move3d_model(model.vid, props.x, props.y, props.z);
+			scale3d_model(model.vid, props.scale.x, props.scale.y, props.scale.z);
+		end
 	}
 	};
 
