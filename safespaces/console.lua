@@ -74,6 +74,7 @@ function console_output()
 end
 
 function console_log(source, message)
+	print(source, message);
 	table.insert(log_message,
 		string.format("[%d] %s: %s", benchmark_timestamp(), source, message))
 

@@ -7,6 +7,7 @@ WM = {};
 local SYMTABLE;
 local debug_verbose = 1;
 local wait_for_display;
+local preview;
 
 -- log all actions to the console
 local function console_forward(...)
@@ -64,6 +65,7 @@ function safespaces(args)
 
 -- since we can't reliably log output, map it to a virtual console
 	console_setup(config);
+	map_video_display(console_output(), 0);
 
 	if (dev.disable_vrbridge) then
 		preview = alloc_surface(VRESW * (dev.primary_console and 0.5 or 1.0), VRESH);
@@ -89,7 +91,6 @@ function safespaces(args)
 
 -- for the testing profile, we map the console first and then attach the preview
 		if (dev.primary_console) then
-			map_video_display(console_output(), 0);
 			console_add_view(preview);
 		else
 			map_video_display(preview, 0);
@@ -147,8 +148,14 @@ function safespaces(args)
 	console_log("system", "init over");
 end
 
+local map_video = map_video_display;
+function map_video_display(src, id, ...)
+	console_log("display", string.format("map: %d to %d", src, id));
+	map_video(src, id, ...);
+end
+
 wait_for_display = function(dev, dstid)
-	console_log("display", "waiting for: " .. dstid);
+	console_log("display", "waiting for: " .. dev.display);
 
 	local old_tick = safespaces_clock_pulse;
 	local refresh_timer = 200;
@@ -165,26 +172,27 @@ wait_for_display = function(dev, dstid)
 -- when a display arrives that match the known/desired display,
 -- map the VR combiner stage to it and map the console to the default display
 	display_action = function(name, id)
-		console_log("display", "detected: " .. name);
-
 		if (string.match(name, dev.display)) then
+			console_log("display", string.format("matched (%s) to (%s) on %d", name, dev.display, id));
 			safespaces_clock_pulse = old_tick;
 			if (dstid) then
-				console_log("display", "mapped to: " .. tostring(dstid));
-				map_video_display(console_output(), 0)
+				console_log("display", string.format("pre-map display, %d to %d", dstid, id));
 				map_video_display(dstid, id);
-
 			else
+				console_log("display", "setup vr pipeline");
+				map_video_display(preview, id);
 				WM:setup_vr(
 				function(ctx, vid, a, b)
 					if (not ctx) then
+						console_log("vr bridge died");
 						return shutdown("VR bridge setup failed, missing / incorrect arcan_vr?", EXIT_FAILURE);
 					end
+					console_log("vrpipe", string.format("setup finished: %d(%d, %d)", vid, a, b));
 					map_video_display(vid, id);
 				end, dev);
 			end
 		else
-			console_log("display", "no match for (" .. dev.display .. ")");
+			console_log("display", "no match for (" .. dev.display .. ") vs (" .. name .. ")");
 		end
 	end
 end

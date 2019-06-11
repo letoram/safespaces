@@ -211,6 +211,7 @@ local function setup_vr_display(wnd, callback, opts)
 
 -- no need for rendertarget redirection if we're going monoscopic/windowed
 	if (not valid_vid(wnd.vr_pipe)) then
+		console_log("vrsetup", "no vr pipe, monoscopic / windowed mode");
 		return;
 	end
 
@@ -397,7 +398,6 @@ local function setup_vr_display(wnd, callback, opts)
 		if (not opts.headless) then
 			vr_map_limb(bridge, cam_l, neck, false, true);
 			vr_map_limb(bridge, cam_r, neck, false, true);
-			wnd:message("HMD active");
 			callback(wnd, combiner, l_eye, r_eye);
 		else
 			link_image(cam_l, wnd.camera);
@@ -425,23 +425,26 @@ local function setup_vr_display(wnd, callback, opts)
 		link_image(source, wnd.camera);
 
 		if (status.kind == "terminated") then
-			wnd:message("VR Bridge shut down (no devices/no permission)");
+			console_log("vrsetup", "bridge tool shut down (check devices / permissions");
 			callback(nil);
 			wnd.vr_state = nil;
 			delete_image(source);
 		end
 		if (status.kind == "limb_removed") then
+			console_log("vrbridge", "lost limb: " .. status.name);
 			if (status.name == "neck") then
 				delete_image(source);
 				callback(nil);
 			end
 		elseif (status.kind == "limb_added") then
+			console_log("vrbridge", "added limb: " .. status.name);
 			if (status.name == "neck") then
 				if (not wnd.vr_state) then
+					console_log("vrbridge", "first neck- limb, setup pipeline");
 					local md = vr_metadata(source);
 					setup_vrpipe(source, md, status.id);
 				else
-					warning("vr bridge reported neck limb twice");
+					console_log("vrbridge", "vr bridge reported neck limb twice");
 				end
 			end
 		end
