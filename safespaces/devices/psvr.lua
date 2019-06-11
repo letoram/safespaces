@@ -3,7 +3,6 @@ return {
 	oversample_w = 1.4,
 	oversample_h = 1.4,
 	distortion_model = "none",
-	hmdarg = "debug=1"
 	-- metadata overrides
 -- width = .. (0.5width*oversample_w)
 -- height = ..
