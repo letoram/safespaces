@@ -198,6 +198,7 @@ function(ctx, model, source, status)
 				return wlut[status.segkind](ctx, model, source, inner_status);
 			end);
 			if valid_vid(vid) then
+				target_flags(source, TARGET_ALLOWGPU);
 				wlut[status.segkind](ctx, model, vid, {kind = "allocated"});
 			end
 		else
