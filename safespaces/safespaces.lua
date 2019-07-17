@@ -65,7 +65,10 @@ function safespaces(args)
 
 -- since we can't reliably log output, map it to a virtual console
 	console_setup(config);
-	map_video_display(console_output(), 0);
+
+	if (not dev.headless) then
+		map_video_display(console_output(), 0);
+	end
 
 	if (dev.disable_vrbridge) then
 		preview = alloc_surface(VRESW * (dev.primary_console and 0.5 or 1.0), VRESH);
@@ -83,6 +86,7 @@ function safespaces(args)
 -- append the menu tree for accessing / manipulating the VR setup
 	WM.menu = (system_load("vr_menus.lua")())(WM, prefix);
 	WM.mouse_mode = "direct";
+	WM.dev = dev;
 	(system_load("ssmenus.lua")())(WM);
 
 -- if we are running without the vr bridge, just map the preview pipeline to
@@ -127,7 +131,7 @@ function safespaces(args)
 		else
 			WM:setup_vr(
 			function(device, comb, l, r)
-				warning("VR device activated");
+				console_log("system", "VR device activated");
 				wait_for_display(dev, comb);
 			end, dev);
 		end
@@ -136,6 +140,8 @@ function safespaces(args)
 		WM:setup_vr(
 		function(dev, comb, l, r)
 -- things are set up as is, just a good spot for adding more processing
+			console_log("system", "VR device activated (default display)");
+			map_video_display(valid_vid(comb) and comb or WORLDID, 0);
 		end, dev);
 	end
 
@@ -144,7 +150,6 @@ function safespaces(args)
 		system_load("autorun.lua")();
 	end
 
-	WM.dev = dev;
 	console_log("system", "init over");
 end
 
@@ -177,7 +182,7 @@ wait_for_display = function(dev, dstid)
 			safespaces_clock_pulse = old_tick;
 			if (dstid) then
 				console_log("display", string.format("pre-map display, %d to %d", dstid, id));
-				map_video_display(dstid, id);
+--				map_video_display(dstid, id);
 			else
 				console_log("display", "setup vr pipeline");
 				map_video_display(preview, id);
@@ -282,9 +287,11 @@ function VRES_AUTORES(w, h, vppcm, flags, source)
 
 	if (WM.dev) then
 		resize_video_canvas(w, h);
-		if (valid_vid(WM.vr_pipe)) then
-			image_resize_storage(WM.vr_pipe, w, h);
-			move_image(WM.vr_pipe, 0, 0);
+		if (valid_vid(WM.combiner)) then
+			image_resize_storage(WM.combiner, w, h);
+			move_image(WM.combiner, 0, 0);
+		else
+			map_video_display(preview, 0);
 		end
 		camtag_model(
 			WM.camera, 0.01, 100.0, 45.0, w/h, true, true, 0, surf);

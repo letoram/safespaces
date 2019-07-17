@@ -12,10 +12,11 @@ return {
 	layer_falloff = 0.9,
 	animation_speed = 30,
 	prefix = "",
+	inv_y = false,
 
 -- console logging
 	console_preview = true,
-	console_lines = 30,
+	console_lines = 50,
 
 -- Special application settings
 	terminal_font = "hack.ttf",

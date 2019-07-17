@@ -346,6 +346,7 @@ local function setup_vr_display(wnd, callback, opts)
 			if (valid_vid(wnd.anchor)) then
 				link_image(combiner, wnd.anchor);
 			end
+			wnd.combiner = combiner;
 		end
 
 -- since we don't show any other models, this is fine without a depth buffer
@@ -355,8 +356,8 @@ local function setup_vr_display(wnd, callback, opts)
 
 		local cam_l = null_surface(1, 1);
 		local cam_r = null_surface(1, 1);
-		scale3d_model(cam_l, 1.0, -1.0, 1.0);
-		scale3d_model(cam_r, 1.0, -1.0, 1.0);
+		scale3d_model(cam_l, 1.0, wnd.scale_y, 1.0);
+		scale3d_model(cam_r, 1.0, wnd.scale_y, 1.0);
 
 		local l_fov = math.deg(md.left_fov);
 		local r_fov = math.deg(md.right_fov);
@@ -1070,6 +1071,7 @@ local function set_defaults(ctx, opts)
 		animation_speed = 5,
 		curve = 0.5,
 		subdiv_factor = {1.0, 0.4},
+		scale_y = opts.inv_y and 1.0 or -1.0
 	};
 
 	for k,v in pairs(tbl) do
@@ -1467,7 +1469,7 @@ return function(ctx, surf, opts)
 -- invert y depends a bit on how the rendertarget is mapped, the simple
 -- version is to just flip of the profile requests it
 	local cam = null_surface(1, 1);
-	scale3d_model(cam, 1.0, opts.inv_y and 1.0 or -1.0, 1.0);
+	scale3d_model(cam, 1.0, ctx.scale_y, 1.0);
 
 -- we may need to use the default 'render to world' when running
 -- monoscopic in a windowed mode

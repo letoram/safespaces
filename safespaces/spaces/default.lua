@@ -26,6 +26,16 @@ return {
 "layers/layer_vid/models/vr180/connpoint/reveal_focus=vr180sbs",
 "layers/layer_vid/models/vr180/scale=4",
 
+"layers/layer_vid/settings/depth=40.0",
+"layers/layer_vid/settings/radius=40.0",
+"layers/layer_vid/settings/fixed=true",
+"layers/layer_vid/add_model/halfcylinder=vrimg",
+"layers/layer_vid/models/vrimg/set_default",
+"layers/layer_vid/models/vrimg/flip=true",
+"layers/layer_vid/models/vrimg/scale=4",
+"layers/layer_vid/models/vrimg/source=wallpapers/test_l.png",
+--"layers/layer_vid/models/vfimg/source_right=wallpapers/test_r.png",
+
 -- an interactive foreground layer with a transparent terminal
 "layers/add=fg",
 "layers/layer_fg/settings/active_scale=3",
@@ -52,7 +62,7 @@ return {
 
 -- temrinal should be the focus of this layer, add a shutdown event should
 -- this terminal be destroyed, remove this when you know how to exit :-)
-"layers/current/models/selected/events/destroy=shutdown",
+-- "layers/current/models/selected/events/destroy=shutdown",
 
 -- Other example models to add to your scene:
 -- a model layer that starts out hidden for mostly-non-interactive sources

@@ -262,6 +262,20 @@ local function add_mapping_options(tbl, wnd, layer, model, subid)
 	});
 	table.insert(tbl,
 	{
+		name = "source_right",
+		label = "Source(Right)",
+		kind = "value",
+		description = "Sepcify the path to a resource that should be mapped to the right-eye view of the model",
+		validator =
+			function(str)
+				return str and #str > 0;
+			end,
+		handler = function(ctx, res)
+			load_handler(ctx, res, true);
+		end
+	});
+	table.insert(tbl,
+	{
 		name = "map",
 		label = "Map",
 		description = "Map the contents of another window to the model",

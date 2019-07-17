@@ -160,7 +160,7 @@ return function(WM)
 			vr_system_message("scale mouse mode");
 			WM.mouse_handler = scale_selected;
 		elseif (val == "rotate") then
-			vr_system_message("routate mouse mode");
+			vr_system_message("rotate mouse mode");
 			WM.mouse_handler = rotate_selected;
 		elseif (val == "ipd") then
 			if (not WM.vr_state) then
@@ -191,10 +191,36 @@ return function(WM)
 	);
 
 	table.insert(WM.menu,
+	{
+		name = "map_console",
+		label = "Map Console",
+		kind = "action",
+		description = "Set primart display output to console",
+		handler = function()
+			show_image(console_output());
+			map_video_display(console_output(), 0);
+		end
+	});
+
+	table.insert(WM.menu,
+	{
+		name = "map_display",
+		label = "Map VR Pipe",
+		kind = "action",
+		handler = function()
+			if valid_vid(WM.combiner) then
+				map_video_display(WM.combiner, 0);
+			else
+				hide_image(console_output());
+				map_video_display(WORLDID, 0);
+			end
+		end,
+	});
+
+	table.insert(WM.menu,
 {
 	name = "shutdown",
 	kind = "action",
-	description = "Shutdown Safespaces (invoke twice in a row)",
 	handler = function()
 		return shutdown("", EXIT_SUCCESS);
 	end

@@ -58,7 +58,7 @@ looks like this:
         display_rotate = 'cw90',
         width = 2560,
         height = 1440,
-        hmdarg = "ohmd_index=-1",
+        hmdarg = "ohmd_index=0",
         bindings = [
             ["F1"] = "mouse=selected"
         ]
@@ -68,18 +68,39 @@ The values herein takes precedence over whatever the VR bridge might have set,
 so you can have your custom overrides here. The 'bindings' complement input
 configuration with special ones you might want for a certain device only.
 
-For all the options, see devices/README.md
+The key options are as follows:
 
-Some properties are extra important, such as 'display' - the profile will only
-ever get activated when a display with that specific name (can be a lua pattern)
-gets detected.
+display = 'pattern' : This checks for a display EDID matching the lua pattern
+presented by the string rather than going for the first one available. If this
+is set, setup won't progress until the correct display has been found.
+
+prelaunch = true | false : This will launch the vr bridge tool before setting
+up a rendering pipeline etc.  It is primarily needed for HMD devices that don't
+register or behave as displays until after some device specific initial
+commands have been sent.
+
+display\_rotate = cw90 | ccw90 | 180 | cw90ccw90 : This specifies the base
+orientation of the display.
+
+distortion\_model = basic, none : Using the universal distortion shader from the
+OpenHMD project or disable barrel distortion altogether.
+
+no\_combiner = true | false : Normally the left and right eye are rendered as
+separate rendertarget passes then combined with a distortion shader into a third
+rendertarget that then gets sent to the screen. Depending on video platform and
+so on, this might burn fillrate by causing one extra blit pass. This is mainly
+for windowed like modes.
+
+headless = true | false : This mode does not expect to be mapped to a display
+but rather outputs to whatever arcan happens to pick based on the video platform
+in use. This is mainly for windowed like modes.
 
 There are some special built-in profiles:
 
 * 'desktop'    : 3D desktop only, no vr devices or stereoscopic rendering
-* 'basic'      : Just draw to the default display
-* 'headless'   : Stereoscopic rendering, no VR devices
+* 'basic'      : Just draw to the default display and treat it as the VR display
 * 'test'       : Like desktop, but with the console on the left-hand side
+* 'simulated'  : 'Headless' operation: stereo with distortion and no combiner stage
 
 'Basic' is useful if you are trying to run arcan as a normal client with an
 outer display server like Xorg or on OS X. It draws as a normal window and
