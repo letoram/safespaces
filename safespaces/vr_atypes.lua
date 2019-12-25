@@ -3,6 +3,8 @@
 -- segment types and their respective subsegments.
 --
 
+local client_log = suppl_add_logfn("client");
+
 local clut = {
 };
 
@@ -34,6 +36,8 @@ local function apply_connrole(layer, model, source)
 end
 
 local function model_eventhandler(ctx, model, source, status)
+	client_log("kind=event:type=" .. status.kind);
+
 	if (status.kind == "terminated") then
 -- need to check if the model is set to reset to last set /
 -- open connpoint or to die on termination
@@ -43,7 +47,6 @@ local function model_eventhandler(ctx, model, source, status)
 
 	elseif (status.kind == "segment_request") then
 		local kind = clut[status.segkind];
-		console_log("model-ext", "request subsegment: " .. status.segkind);
 
 		if (not kind) then
 			return;
@@ -83,6 +86,9 @@ local function model_eventhandler(ctx, model, source, status)
 	end
 end
 
+clut["multimedia"] = model_eventhandler;
+clut["game"] = model_eventhandler;
+
 clut["hmd-l"] = function(ctx, model, source, status)
 	if (status.kind == "segment_request") then
 		if (status.segkind == "hmd-r") then
@@ -105,7 +111,6 @@ end
 -- terminal eventhandler behaves similarly to the default, but also send fonts
 clut.terminal =
 function(ctx, model, source, status)
-	console_log("terminal", status.kind);
 	if (status.kind == "preroll") then
 		target_fonthint(source, ctx.terminal_font, ctx.terminal_font_sz * FONT_PT_SZ, 2);
 		target_graphmode(source, 1, ctx.terminal_opacity);
@@ -179,22 +184,25 @@ end
 
 clut["bridge-wayland"] =
 function(ctx, model, source, status)
-	console_log("wayland", "bridge event:" .. status.kind);
+	client_log("kind=wayland:type=wayland-bridge:event=" .. status.kind);
 
+-- our model display corresponds to a wayland 'output'
 	if (status.kind == "preroll") then
 		local width, height = model:get_displayhint_size();
 		target_displayhint(source, width, height, 0, {ppcm = ctx.display_density});
 		target_flags(source, TARGET_ALLOWGPU);
-		console_log("wayland", "bridge connected");
 
 	elseif (status.kind == "segment_request") then
-		console_log("wayland", "segment kind: " .. status.segkind);
 
 -- use our default "size" and forward to the handler with a new event type
 		if wlut[status.segkind] then
+			client_log(string.format(
+				"kind=status:source=%d:model=%s:segment_request=%s",
+				source, model.name, status.segkind)
+			);
+
 			local vid = accept_target(source,
 			function(source, inner_status)
-				console_log("wayland-client", inner_status.kind);
 				return wlut[status.segkind](ctx, model, source, inner_status);
 			end);
 			if valid_vid(vid) then
@@ -202,7 +210,10 @@ function(ctx, model, source, status)
 				wlut[status.segkind](ctx, model, vid, {kind = "allocated"});
 			end
 		else
-			console_log("wayland", "no handler for type: " .. status.segkind);
+			client_log(string.format(
+				"kind=error:source=%d:model=%s:message=no handler for %s",
+				source, model.name, status.segkind)
+			);
 		end
 
 	elseif (status.kind == "terminated") then
@@ -228,6 +239,10 @@ function(ctx, model, source, status)
 -- based on segment type, install a new event-handler and tie to a new model
 		local dstfun = clut[status.segkind];
 		if (dstfun == nil) then
+			client_log(string.format(
+				"kind=segment_request:name=%s:source=%d:status=rejected:type=%s",
+				model.name, source, status.segkind));
+
 			delete_image(source);
 			return;
 
@@ -256,14 +271,18 @@ function(ctx, model, source, status)
 				return dstfun(ctx, new_model, source, status);
 			end);
 
+--action if a child has been spawned, other is to 'swap in' and swallow (terminal case)
 			local parent = model.parent and model.parent or model;
 			new_model.parent = parent;
 			new_model:swap_parent();
 
 			dstfun(ctx, new_model, source, status);
 		end
+
+-- local visibility, anchor / space can still be hidden
 	elseif (status.kind == "resized") then
 		model:show();
+
 	elseif (status.kind == "terminated") then
 -- connection point died, should we bother allocating a new one?
 		delete_image(source);
@@ -273,14 +292,22 @@ function(ctx, model, source, status)
 	end
 end
 
+-- primary-segment to handler mapping
 return function(model, source, kind)
+	client_log(string.format(
+		"kind=get_handler:type=%s:model=%s:source=%d", kind, model.name, source));
+
 	if clut[kind] then
-		console_log("external", "bound model to handler: " .. kind)
+		client_log(string.format("kind=get_handler:" ..
+			"type=%s:handler=custom:model=%s:source=%d", kind, model.name, source));
+
 		return function(source, status)
 			clut[kind](model.layer.ctx, model, source, status)
 		end
 	else
-		console_log("external", "no type for: " .. kind .. " fallback to default")
+		client_log(string.format("kind=get_handler:" ..
+			"type=%s:handler=default:model=%s:source=%d", kind, model.name, source));
+
 		return function(source, status)
 			clut.default(model.layer.ctx, model, source, status)
 		end

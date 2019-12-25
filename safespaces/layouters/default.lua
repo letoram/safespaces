@@ -2,8 +2,10 @@
 -- basic layout algorithm
 --
 
-return function(layer)
-	if (layer.fixed) then
+return function(layer, opts)
+	local opts = opts and opts or {};
+
+	if (layer.fixed and not opts.force) then
 		return;
 	end
 
@@ -106,7 +108,7 @@ return function(layer)
 				(math.abs(v.layer_pos[3] - z) ~= 0.0001) or
 				(math.abs(v.layer_ang ~= ang) ~= 0.0001) then
 
-				move3d_model(v.vid, x, 0, z, as, interp);
+				move3d_model(v.vid, v.rel_pos[1] + x, v.rel_pos[2], v.rel_pos[3] + z, as, interp);
 				rotate3d_model(v.vid,
 					v.rel_ang[1], v.rel_ang[2], v.rel_ang[3] + ang,
 					as

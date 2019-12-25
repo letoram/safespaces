@@ -1,3 +1,5 @@
+local wm_log = suppl_add_logfn("wm");
+
 local function add_model_menu(wnd, layer)
 
 -- deal with the 180/360 transition shader-wise
@@ -359,7 +361,6 @@ local function gen_event_menu(wnd, layer, model)
 			hint = "action/path/to/bind",
 			description = "Trigger this path on model destruction",
 			handler = function(ctx, val)
-				print("on destroy set to ", val)
 				table.insert(model.on_destroy, val);
 			end
 		}
@@ -376,8 +377,6 @@ local stereo_tbl = {
 local function model_stereo(model, val)
 	if (stereo_tbl[val]) then
 		model:set_stereo(stereo_tbl[val]);
-	else
-		console_log("missing stereoscopic mode: " .. val);
 	end
 end
 
@@ -407,6 +406,9 @@ local function model_settings_menu(wnd, layer, model)
 		label = "Rotate",
 		description = "Set the current model-layer relative rotation",
 		kind = "value",
+		initial = function()
+			return string.format("%f %f %f", model.rel_ang[1], model.rel_ang[2], model.rel_ang[3]);
+		end,
 		validator = suppl_valid_typestr("fff", -359, 359, 0),
 		handler = function(ctx, val)
 			local res = suppl_unpack_typestr("fff", val, -359, 359);
@@ -421,6 +423,9 @@ local function model_settings_menu(wnd, layer, model)
 		label = "Flip",
 		description = "Force- override t-coordinate space (vertical flip)",
 		kind = "value",
+		initial = function()
+			return tostring(model.force_flip);
+		end,
 		set = {"true", "false"},
 		handler = function(ctx, val)
 			if (val == "true") then
@@ -437,6 +442,10 @@ local function model_settings_menu(wnd, layer, model)
 		label = "Spin",
 		description = "Increment or decrement the current model-layer relative rotation",
 		kind = "value",
+		initial = function()
+			return string.format("%f %f %f",
+				model.rel_ang[1], model.rel_ang[2], model.rel_ang[3]);
+		end,
 		validator = suppl_valid_typestr("fff", -359, 359, 0),
 		handler = function(ctx, val)
 			local res = suppl_unpack_typestr("fff", val, -359, 359);
@@ -453,7 +462,7 @@ local function model_settings_menu(wnd, layer, model)
 		label = "Scale Factor",
 		description = "Set model-focus (center slot) scale factor",
 		kind = "value",
-		validator = gen_valid_num(0.1, 100.0),
+		validator = gen_valid_num(0.001, 100.0),
 		handler = function(ctx, val)
 			model:set_scale_factor(tonumber(val));
 			model.layer:relayout();
@@ -545,7 +554,6 @@ local function model_settings_menu(wnd, layer, model)
 		description = "Mark the contents as stereoscopic and apply a view dependent mapping",
 		kind = "value",
 		set = {"none", "sbs", "sbs-rl", "oau", "oau-rl"},
-
 		handler = function(ctx, val)
 			model_stereo(model, val);
 		end
@@ -598,12 +606,20 @@ local function model_settings_menu(wnd, layer, model)
 
 			model:switch_mesh(set[i]);
 
-			console_log("model", "mesh type set to " .. set[i]);
 			blend_image(model.vid, props.opacity);
 			move3d_model(model.vid, props.x, props.y, props.z);
-			scale3d_model(model.vid, props.scale.x, props.scale.y, props.scale.z);
 		end
-	}
+	},
+	{
+		name = "protect",
+		label = "Protect",
+		kind = "value",
+		set = {"true", "false"},
+		description = "Protect the model from being removed on a layer deletion / space swap",
+		handler = function(ctx, val)
+			model.protected = val == "true";
+		end
+	},
 	};
 
 -- if the source is in cubemap state, we need to work differently
@@ -731,15 +747,21 @@ local function get_layer_menu(wnd, layer)
 			end
 		},
 		{
+			name = "purge",
+			label = "Purge",
+			description = "Destroy all non-protected models and, if there are no models left, the layer itself",
+			kind = "action",
+			handler = function(ctx, val)
+				layer:destroy_protected();
+			end
+		},
+		{
 			name = "destroy",
 			label = "Destroy",
 			description = "Destroy the layer and all associated models and connections",
-			kind = "value",
-			set = {"true", "false"},
+			kind = "action",
 			handler = function(ctx, val)
-				if (val == "true") then
-					layer:destroy();
-				end
+				layer:destroy();
 			end
 		},
 		{
@@ -809,7 +831,7 @@ local function get_layer_menu(wnd, layer)
 			eval = function(ctx, val)
 				return not layer.fixed;
 			end,
-			validator = suppl_valid_typestr("ffff", 0.0, 359.0, 0.0),
+			validator = suppl_valid_typestr("ffff", -10.0, 10.0, 0.0),
 			handler = function(ctx, val)
 				local res = suppl_unpack_typestr("ffff", val, -10, 10);
 				instant_image_transform(layer.anchor);
@@ -926,31 +948,6 @@ local function layer_menu(wnd)
 	return res;
 end
 
-
-local function load_space(wnd, prefix, path)
-	local lst = system_load(prefix .. "spaces/" .. path, false);
-	if (not lst) then
-		warning("vr-load space (" .. path .. ") couldn't load/parse script");
-		return;
-	end
-	local cmds = lst();
-	if (not type(cmds) == "table") then
-		warning("vr-load space (" .. path .. ") script did not return a table");
-	end
-
--- defer layouter until all has been loaded
-	local dispatch = wnd.default_layouter;
-	wnd.default_layouter = function() end;
-	for i,v in ipairs(cmds) do
-		dispatch_symbol(v);
-	end
-
-	wnd.default_layouter = dispatch;
-	for _,v in ipairs(wnd.layers) do
-		v:relayout();
-	end
-end
-
 local function hmd_config(wnd, opts)
 	return {
 	{
@@ -971,8 +968,8 @@ local function hmd_config(wnd, opts)
 	handler = function(ctx, val)
 		local num = tonumber(val);
 		wnd.vr_state.meta.ipd = num;
-		move3d_model(wnd.vr_state.l, -wnd.vr_state.meta.ipd * 0.5, 0, 0);
-		move3d_model(wnd.vr_state.r, wnd.vr_state.meta.ipd * 0.5, 0, 0);
+		move3d_model(wnd.vr_state.cam_l, -wnd.vr_state.meta.ipd * 0.5, 0, 0);
+		move3d_model(wnd.vr_state.cam_r, wnd.vr_state.meta.ipd * 0.5, 0, 0);
 		warning(string.format("change ipd: %f", wnd.vr_state.meta.ipd));
 	end
 	},
@@ -985,8 +982,8 @@ local function hmd_config(wnd, opts)
 		handler = function(ctx, val)
 			local num = tonumber(val);
 			wnd.vr_state.meta.ipd = wnd.vr_state.meta.ipd + num;
-			move3d_model(wnd.vr_state.l, -wnd.vr_state.meta.ipd * 0.5, 0, 0);
-			move3d_model(wnd.vr_state.r, wnd.vr_state.meta.ipd * 0.5, 0, 0);
+			move3d_model(wnd.vr_state.cam_l, -wnd.vr_state.meta.ipd * 0.5, 0, 0);
+			move3d_model(wnd.vr_state.cam_r, wnd.vr_state.meta.ipd * 0.5, 0, 0);
 			warning(string.format("change ipd: %f", wnd.vr_state.meta.ipd));
 		end
 	},
@@ -999,6 +996,32 @@ local function hmd_config(wnd, opts)
 	handler = function(ctx, val)
 		wnd.vr_state:set_distortion(val);
 	end
+	},
+	{
+	name = "yscale",
+	label = "Y scale",
+	description = "override the Y scale value of the combiner surface",
+	eval = function()
+		return valid_vid(wnd.vr_state.cam_l);
+	end,
+	initial = function()
+		return tostring(wnd.scale_y);
+	end,
+	set = {"1.0", "-1.0"},
+	handler = function(ctx, val)
+		local scale_y = tonumber(val);
+		scale3d_model(wnd.vr_state.cam_l, 0, val, 0);
+		scale3d_model(wnd.vr_state.cam_r, 0, val, 0);
+	end
+	},
+	{
+		name = "toggle_calibration",
+		label = "Toggle Calibration",
+		description = "Switch between normal output and a reference image",
+		kind = "action",
+		handler = function()
+			wnd.vr_state:toggle_calibration();
+		end
 	}
 };
 end
@@ -1074,7 +1097,7 @@ local res = {{
 		return set and #set > 0;
 	end,
 	handler = function(ctx, val)
-		load_space(wnd, opts.prefix, val);
+		wnd:load_space(opts.prefix  .. val);
 	end,
 },
 {
@@ -1097,9 +1120,11 @@ local res = {{
 		return res;
 	end,
 	eval = function()
-		local res;
-		display_bytag("VR", function(disp) res = true; end);
-		return res and type(durden) == "function";
+		local res = false;
+		if display_bytag then
+			display_bytag("VR", function(disp) res = true; end);
+		end
+		return res;
 	end,
 	handler = function(ctx, val)
 		wnd:setup_vr(wnd, val);

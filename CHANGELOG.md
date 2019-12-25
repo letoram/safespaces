@@ -7,13 +7,15 @@
 * Added model methods for fixed positioning
 * Added model property to blocking autolayouter
 * Added model methods for cycling stereoscopic mapping
+* Reworked device detection and screen mapping
 * API path for switching appl
-* Added a system console
-* Show system console on multi-screen setup for non-HMD displays
-* New device profile: test to ease development and get 3d and console side-by-side
+* Calibration toggle (/hmd/toggle\_calibration)
+* Added IPC control & monitoring, use with socat or arcan-cfgfs mount
 
 New controls / options:
+* mouse controls are magnified or minified by holding meta keys
 * /mouse=ipd : adjust HMD parameters (cycle for distortion, abberation, etc.)
+* /mouse=move : adjust scale
 
 * Added menu controls for grab toggle
 

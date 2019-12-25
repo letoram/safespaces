@@ -3,7 +3,7 @@ return {
 	oversample_w = 1.0,
 	oversample_h = 1.0,
 	distortion_model = "basic",
-	prelaunch = true,
+	inv_y = true,
 -- rift returns a larger width, causing the positions to be wrong
 -- metadata overrides
 -- width = .. (0.5width*oversample_w)

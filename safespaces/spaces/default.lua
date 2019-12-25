@@ -8,33 +8,26 @@ return {
 
 -- a little extra work to define a multi- mapped textured cube
 "layers/layer_bg/add_model/cube=bg",
-"layers/layer_bg/models/bg/faces/1/source=skyboxes/corona/0.png", -- +x
-"layers/layer_bg/models/bg/faces/2/source=skyboxes/corona/1.png", -- -x
-"layers/layer_bg/models/bg/faces/3/source=skyboxes/corona/2.png", -- +y
-"layers/layer_bg/models/bg/faces/4/source=skyboxes/corona/3.png", -- -y
-"layers/layer_bg/models/bg/faces/5/source=skyboxes/corona/4.png", -- +z
-"layers/layer_bg/models/bg/faces/6/source=skyboxes/corona/5.png", -- -z
+"layers/layer_bg/models/bg/faces/1/source=wallpapers/corona/0.png", -- +x
+"layers/layer_bg/models/bg/faces/2/source=wallpapers/corona/1.png", -- -x
+"layers/layer_bg/models/bg/faces/3/source=wallpapers/corona/2.png", -- +y
+"layers/layer_bg/models/bg/faces/4/source=wallpapers/corona/3.png", -- -y
+"layers/layer_bg/models/bg/faces/5/source=wallpapers/corona/4.png", -- +z
+"layers/layer_bg/models/bg/faces/6/source=wallpapers/corona/5.png", -- -z
 
 -- add another cylinder-180 that can do sbs
 "layers/add=vid",
 "layers/layer_vid/settings/depth=40.0",
 "layers/layer_vid/settings/radius=40.0",
 "layers/layer_vid/settings/fixed=true",
+"layers/layer_vid/settings/ignore=true",
 "layers/layer_vid/add_model/halfcylinder=vr180",
 "layers/layer_vid/models/vr180/set_default",
 "layers/layer_vid/models/vr180/flip=true",
 "layers/layer_vid/models/vr180/connpoint/reveal_focus=vr180sbs",
-"layers/layer_vid/models/vr180/scale=4",
-
-"layers/layer_vid/settings/depth=40.0",
-"layers/layer_vid/settings/radius=40.0",
-"layers/layer_vid/settings/fixed=true",
-"layers/layer_vid/add_model/halfcylinder=vrimg",
-"layers/layer_vid/models/vrimg/set_default",
-"layers/layer_vid/models/vrimg/flip=true",
-"layers/layer_vid/models/vrimg/scale=4",
-"layers/layer_vid/models/vrimg/source=wallpapers/test_l.png",
---"layers/layer_vid/models/vfimg/source_right=wallpapers/test_r.png",
+"layers/layer_vid/models/vr180/scale=2",
+"layers/layer_vid/models/vr180/stereoscopic=sbs",
+"layers/layer_vid/models/vr180/spin=0 0 -180",
 
 -- an interactive foreground layer with a transparent terminal
 "layers/add=fg",
@@ -60,9 +53,9 @@ return {
 -- and set the right focus
 "layers/layer_fg/focus",
 
--- temrinal should be the focus of this layer, add a shutdown event should
+-- terminal should be the focus of this layer, add a shutdown event should
 -- this terminal be destroyed, remove this when you know how to exit :-)
--- "layers/current/models/selected/events/destroy=shutdown",
+"layers/current/models/selected/events/destroy=shutdown",
 
 -- Other example models to add to your scene:
 -- a model layer that starts out hidden for mostly-non-interactive sources

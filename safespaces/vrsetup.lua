@@ -1,13 +1,10 @@
+--
+-- Basic primitives for VR device control, pipeline configuration etc.
+--
+
 local setup_event_handler = system_load("vr_atypes.lua")()
-
--- compatibility workaround
-if not TD_HINT_FULLSCREEN then
-	TD_HINT_FULLSCREEN = 16;
-end
-
-if not TD_HINT_MAXIMIZED then
-	TD_HINT_MAXIMIZED = 8;
-end
+local wm_log = suppl_add_logfn("wm");
+local hmd_log = suppl_add_logfn("hmd");
 
 local vert = [[
 uniform mat4 modelview;
@@ -48,7 +45,7 @@ void main()
 	}
 
 	if (curve > 0.0){
-		vert.z -= sin(3.14 * tc.s) * curve;
+//		vert.z -= sin(3.14 * tc.s) * curve;
 	}
 
 	texco = tc;
@@ -82,8 +79,8 @@ void main()
 	else
 		col = texture2D(map_tu0, texco);
 
-	gl_FragColor = vec4(col.rgb, col.a * obj_opacity);
-//	gl_FragColor = vec4(vec3(1.0 - depth_linear(gl_FragCoord.z)), 1.0);
+//	gl_FragColor = vec4(col.rgb, col.a * obj_opacity);
+	gl_FragColor = vec4(vec3(depth_linear(gl_FragCoord.z)), 1.0);
 }
 ]];
 
@@ -93,6 +90,8 @@ void main()
 -- variable vignette using obj_opacity as strength.
 local distort = [[
 uniform sampler2D map_tu0;
+uniform sampler2D map_tu1;
+
 uniform float obj_opacity;
 
 uniform vec2 lens_center;
@@ -121,12 +120,21 @@ void main()
 	vec2 tc_g = (lens_center + aberration.g * r_displaced) / viewport_scale;
 	vec2 tc_b = (lens_center + aberration.b * r_displaced) / viewport_scale;
 
+	if (tc_g.x < 0.0 || tc_g.x > 1.0 || tc_g.y < 0.0 || tc_g.y > 1.0)
+		discard;
+
 	float cr = texture2D(map_tu0, tc_r).r;
 	float cg = texture2D(map_tu0, tc_g).g;
 	float cb = texture2D(map_tu0, tc_b).b;
 
-	if (tc_g.x < 0.0 || tc_g.x > 1.0 || tc_g.y < 0.0 || tc_g.y > 1.0)
-		discard;
+/* 1.0 - obj_opacity == tu1 blend introduction
+	if (obj_opacity < 1.0){
+		float weight = 1.0 - obj_opacity;
+		cr = mix(cr, texture2D(map_tu1, tc_r).r, weight);
+		cg = mix(cg, texture2D(map_tu1, tc_g).g, weight);
+		cb = mix(cb, texture2D(map_tu1, tc.b).b, weight);
+	}
+*/
 
 	gl_FragColor = vec4(cr, cg, cb, 1.0);
 }
@@ -176,6 +184,29 @@ local function set_vr_defaults(ctx, opts)
 	end
 end
 
+local function vr_calib(vrctx)
+	if vrctx.in_calib then
+		hmd_log("kind=status:calibration=off");
+		vrctx.in_calib = false;
+
+		show_image({vrctx.rt_l, vrctx.rt_r});
+		hide_image({vrctx.calib_l, vrctx.calib_r});
+	else
+		vrctx.in_calib = true;
+		hmd_log("kind=status:calibration_on");
+		hide_image({vrctx.rt_l, vrctx.rt_r});
+		show_image({vrctx.calib_l, vrctx.calib_r});
+	end
+end
+
+-- chance blending weights, overlay shader etc.
+local function vr_overlay(vrctx, left, right, scene)
+	image_sharestorage(left, vrctx.cam_l);
+	image_sharestorage(right, vrctx.cam_r);
+	blend_image(vrctx.cam_l, scene, 100);
+	blend_image(vrctx.cam_r, scene, 100);
+end
+
 local function vr_distortion(vrctx, model)
 	if (not model or model == "none") then
 		image_shader(vrctx.rt_l, "DEFAULT");
@@ -211,7 +242,7 @@ local function setup_vr_display(wnd, callback, opts)
 
 -- no need for rendertarget redirection if we're going monoscopic/windowed
 	if (not valid_vid(wnd.vr_pipe)) then
-		console_log("vrsetup", "no vr pipe, monoscopic / windowed mode");
+		hmd_log("kind=error:message=vr_pipe invalid");
 		return;
 	end
 
@@ -242,11 +273,11 @@ local function setup_vr_display(wnd, callback, opts)
 
 -- apply the oversample_ (quality option) to each eye as they will then
 -- affect the rendertarget allocation
-		local eye_rt_w = math.clamp(dispw * wnd.oversample_w, 256, MAX_SURFACEW);
-		local eye_rt_h = math.clamp(disph * wnd.oversample_h, 256, MAX_SURFACEH);
 		local halfw = dispw * 0.5;
 		local halfh = disph * 0.5;
 		local diff = dispw - halfh;
+		local eye_rt_w = math.clamp(halfw * wnd.oversample_w, 256, MAX_SURFACEW);
+		local eye_rt_h = math.clamp(disph * wnd.oversample_h, 256, MAX_SURFACEH);
 
 -- depending on panel and lens configuration, we might need to modify
 -- the eye layout in the combiner stage
@@ -300,32 +331,65 @@ local function setup_vr_display(wnd, callback, opts)
 		end
 
 		local l_eye = alloc_surface(eye_rt_w, eye_rt_h);
+		local l_eye_calib = load_image("calib_left.png");
+		local l_eye_overlay = null_surface(eye_rt_w, eye_rt_h);
+		image_tracetag(l_eye_overlay, "left_overlay");
+		image_tracetag(l_eye_calib, "left_calibration");
 		image_tracetag(l_eye, "left_eye");
+
 		local r_eye = alloc_surface(eye_rt_w, eye_rt_h);
+		local r_eye_calib = load_image("calib_right.png");
+		local r_eye_overlay = null_surface(eye_rt_w, eye_rt_h);
+		image_tracetag(r_eye_overlay, "right_overlay");
+		image_tracetag(r_eye_calib, "right_calibration");
 		image_tracetag(r_eye, "right_eye");
+
 		if (opts.left_coordinates) then
 			image_set_txcos(l_eye, opts.left_coordinates);
+			image_set_txcos(l_eye_calib, opts.left_coordinates);
 		end
 
 		if (opts.right_coordinates) then
 			image_set_txcos(r_eye, opts.right_coordinates);
+			image_set_txcos(r_eye_calib, opts.right_coordinates);
 		end
 
+-- keep the l/r calibration images hidden
 		show_image({l_eye, r_eye});
 
+-- two views of the same pipeline
 		define_linktarget(l_eye, wnd.vr_pipe);
 		define_linktarget(r_eye, wnd.vr_pipe);
+
+-- but set a hint in the shader so we can remap coordinates in stereo-
+-- sources that gets composited
 		rendertarget_id(l_eye, 0);
 		rendertarget_id(r_eye, 1);
 
+-- apply image position offsets (lenses on screen)
 		move_image(l_eye, pos_l_eye_x, pos_l_eye_y);
+		move_image(l_eye_calib, pos_l_eye_x, pos_l_eye_y);
+		link_image(l_eye_overlay, l_eye);
+		image_inherit_order(l_eye_overlay, true);
+		order_image(l_eye_overlay, 1);
+
 		move_image(r_eye, pos_r_eye_x, pos_r_eye_y);
+		move_image(r_eye_calib, pos_r_eye_x, pos_r_eye_y);
+		link_image(r_eye_overlay, r_eye);
+		image_inherit_order(r_eye_overlay, true);
+		order_image(r_eye_overlay, 1);
 
 		resize_image(l_eye, eye_w, eye_h);
+		resize_image(l_eye_calib, eye_w, eye_h);
 		resize_image(r_eye, eye_w, eye_h);
+		resize_image(r_eye_calib, eye_w, eye_h);
 
+-- transform the surfaces
 		rotate_image(l_eye, rotate_l);
+		rotate_image(l_eye_calib, rotate_l);
+
 		rotate_image(r_eye, rotate_r);
+		rotate_image(r_eye_calib, rotate_r);
 
 -- Assume SBS configuration, L/R, combiner is where we apply distortion
 -- and the rendertarget we bind to a preview window as well as map to
@@ -338,26 +402,25 @@ local function setup_vr_display(wnd, callback, opts)
 -- The second is actual distortion parameters via a mesh.
 --
 -- The third is a stencil mask over the rendertarget (missing Lua API).
-		local combiner;
-		if (not opts.no_combiner) then
-			combiner = alloc_surface(dispw, disph);
-			image_tracetag(combiner, "combiner");
-			show_image(combiner);
-			if (valid_vid(wnd.anchor)) then
-				link_image(combiner, wnd.anchor);
-			end
-			wnd.combiner = combiner;
+		hmd_log(string.format(
+			"kind=build_pipe:rotate=%f %f:width=%f:height=%f:scale_y=%f",
+			rotate_r, rotate_l, dispw, disph, wnd.scale_y
+		));
+
+		combiner = alloc_surface(dispw, disph);
+		image_tracetag(combiner, "combiner");
+
+		show_image(combiner);
+		if (valid_vid(wnd.anchor)) then
+			link_image(combiner, wnd.anchor);
 		end
+		define_rendertarget(combiner,
+			{l_eye, l_eye_calib, r_eye, r_eye_calib});
 
 -- since we don't show any other models, this is fine without a depth buffer
-		if (combiner) then
-			define_rendertarget(combiner, {l_eye, r_eye});
-		end
 
 		local cam_l = null_surface(1, 1);
 		local cam_r = null_surface(1, 1);
-		scale3d_model(cam_l, 1.0, wnd.scale_y, 1.0);
-		scale3d_model(cam_r, 1.0, wnd.scale_y, 1.0);
 
 		local l_fov = math.deg(md.left_fov);
 		local r_fov = math.deg(md.right_fov);
@@ -373,27 +436,44 @@ local function setup_vr_display(wnd, callback, opts)
 		camtag_model(cam_l, 0.1, 100.0, l_fov, md.left_ar, true, true, 0, l_eye);
 		camtag_model(cam_r, 0.1, 100.0, r_fov, md.right_ar, true, true, 0, r_eye);
 
+		scale3d_model(cam_l, 1.0, wnd.scale_y, 1.0);
+		scale3d_model(cam_r, 1.0, wnd.scale_y, 1.0);
+
 		local dshader = shader_ugroup(vrshaders.distortion);
 
 -- ipd is set by moving l_eye to -sep, r_eye to +sep
 		if (md.ipd) then
 			move3d_model(cam_l, md.ipd * 0.5, 0, 0);
-			image_origo_offset(cam_l, md.ipd * 10, 0, 0);
+			image_origo_offset(cam_l, md.ipd * 0.5, 0, 0);
 			move3d_model(cam_r, -md.ipd * 0.5, 0, 0);
 			image_origo_offset(cam_r, -md.ipd * 0.5, 0, 0);
 		end
+
+		hmd_log(string.format("kind=status:setup=done:" ..
+			"l_eye_x=%f:l_eye_y=%f:r_eye_x=%f:r_eye_y=%f:" ..
+			"eye_w=%f:eye_h=%f:rt_w=%f:rt_h=%f",
+			pos_l_eye_x, pos_l_eye_y,
+			pos_r_eye_x, pos_r_eye_y,
+			eye_w, eye_h,
+			dispw, disph
+		));
 
 -- the distortion model has Three options, no distortion, fragment shader
 -- distortion and (better) Mesh distortion that can be configured with
 -- image_tesselation (not too many subdivisions, maybe 30, 40 something
 
 		wnd.vr_state = {
-			l = cam_l, r = cam_r, meta = md,
+			cam_l = cam_l, cam_r = cam_r, meta = md,
 			rt_l = l_eye, rt_r = r_eye,
+			calib_l = l_eye_calib, calib_r = r_eye_calib,
+			toggle_calibration = vr_calib,
+			combiner = combiner,
+			set_overlay = vr_overlay,
 			set_distortion = vr_distortion,
 			vid = bridge, shid = dshader,
 			wnd = wnd
 		};
+
 		wnd.vr_state:set_distortion(md.distortion_model);
 
 		if (not opts.headless) then
@@ -422,30 +502,37 @@ local function setup_vr_display(wnd, callback, opts)
 		return;
 	end
 
-	vr_setup(opts.hmdarg, function(source, status)
+	hmd_log("kind=vrsetup:hmdarg=" .. tostring(opts.hmdarg));
+
+	vr_setup(opts.hmdarg,
+	function(source, status)
+		hmd_log("kind=vrevent:kind=" .. status.kind);
 		link_image(source, wnd.camera);
 
 		if (status.kind == "terminated") then
-			console_log("vrsetup", "bridge tool shut down (check devices / permissions");
+			hmd_log("status=terminated:message=vr bridge shut down");
 			callback(nil);
 			wnd.vr_state = nil;
 			delete_image(source);
+-- should have crash recovery / migration option here
 		end
+
 		if (status.kind == "limb_removed") then
-			console_log("vrbridge", "lost limb: " .. status.name);
+			hmd_log("status=limb_lost:limb=" .. status.name);
 			if (status.name == "neck") then
 				delete_image(source);
 				callback(nil);
 			end
 		elseif (status.kind == "limb_added") then
-			console_log("vrbridge", "added limb: " .. status.name);
+			hmd_log("status=limb_added:limb=" .. status.name);
+
+-- neck is what we trigger on for head-tracking and vr pipe
 			if (status.name == "neck") then
 				if (not wnd.vr_state) then
-					console_log("vrbridge", "first neck- limb, setup pipeline");
 					local md = vr_metadata(source);
 					setup_vrpipe(source, md, status.id);
 				else
-					console_log("vrbridge", "vr bridge reported neck limb twice");
+					hmd_log("status=error:message=multiple_neck adds");
 				end
 			end
 		end
@@ -484,7 +571,9 @@ local function model_display_source(model, vid, altvid)
 	if (model.display_index) then
 		set_image_as_frame(model.vid, vid, model.display_index);
 	else
-		image_sharestorage(vid, model.vid);
+		if (valid_vid(vid)) then
+			image_sharestorage(vid, model.vid);
+		end
 
 		if (valid_vid(altvid)) then
 -- we can't 'extract' the source easily again so track it here instead of say
@@ -828,7 +917,8 @@ local function model_connpoint(model, name, kind, nosw)
 	end
 
 	if (not valid_vid(cp)) then
-		console_log("system", "could not spawn connection point: " .. name);
+		wm_log(string.format(
+			"kind=error:name=%s:message=connection_point failure", name));
 		return;
 	end
 
@@ -951,7 +1041,7 @@ local function model_switch_mesh(model, kind, ref)
 		);
 	elseif (kind == "custom") then
 		if (not valid_vid(ref)) then
-			console_log("build-model", "custom specified with invalid ref");
+			wm_log("kind=error:type=custom:message=model_failure");
 			return;
 		end
 		mesh = ref;
@@ -1001,6 +1091,7 @@ local function build_model(layer, kind, name, ref)
 		layer = layer,
 		extctr = 0, -- external windows spawned via this model
 		parent = nil,
+		protected = false,
 
 -- positioning / sizing, drawing
 		opacity = 1.0,
@@ -1071,11 +1162,11 @@ local function set_defaults(ctx, opts)
 		animation_speed = 5,
 		curve = 0.5,
 		subdiv_factor = {1.0, 0.4},
-		scale_y = opts.inv_y and 1.0 or -1.0
+		scale_y = 1.0
 	};
 
 	for k,v in pairs(tbl) do
-		ctx[k] = (opts[k] and opts[k]) or tbl[k];
+		ctx[k] = gconfig_get(k, v);
 	end
 end
 
@@ -1097,6 +1188,10 @@ local function layer_zpos(layer)
 end
 
 local function layer_add_model(layer, kind, name, ...)
+	if layer.insert_block then
+		return;
+	end
+
 	for k,v in ipairs(layer.models) do
 		if (v.name == name) then
 			return;
@@ -1313,7 +1408,6 @@ local function layer_cycle(layer, left, step)
 end
 
 local function layer_destroy(layer)
-
 	for i,v in ipairs(layer.ctx.layers) do
 		if (v == layer) then
 			table.remove(layer.ctx.layers, i);
@@ -1330,6 +1424,38 @@ local function layer_destroy(layer)
 	for k,v in pairs(layer) do
 		layer[k] = nil;
 	end
+end
+
+local function layer_destroy_protected(layer)
+	local got_prot = false;
+	for i,v in ipairs(layer.models) do
+		if v.protected then
+			got_prot = true;
+			break;
+		end
+	end
+
+	if got_prot then
+		layer_destroy(layer);
+	end
+
+-- don't want an on-destroy event mapped to something that
+-- would create a new window getting in our way
+	layer.insert_block = true;
+
+-- create a new table copy so we are safe against reordering
+	local copy = {};
+	for i,v in ipairs(layer.models) do
+		copy[i] = v;
+	end
+
+	for i=#copy,1,-1 do
+		if not copy[i].protected and copy[i].destroy then
+			copy[i]:destroy();
+		end
+	end
+
+	layer.insert_block = false;
 end
 
 local function dump(ctx, outf)
@@ -1431,6 +1557,7 @@ local function layer_add(ctx, tag)
 			return ctx.default_layouter(...);
 		end,
 		destroy = layer_destroy,
+		destroy_protected = layer_destroy_protected,
 
 		name = tag,
 
@@ -1463,13 +1590,30 @@ local function vr_input(ctx, iotbl, multicast)
 	target_input(dst, iotbl);
 end
 
-return function(ctx, surf, opts)
+local function load_space(ctx, path)
+	local lst = system_load(ctx.prefix .. "spaces/" .. path, false);
+	if (not lst) then
+		warning("vr-load space (" .. path .. ") couldn't load/parse script");
+		return;
+	end
+	local cmds = lst();
+	if (not type(cmds) == "table") then
+		warning("vr-load space (" .. path .. ") script did not return a table");
+	end
+
+	for i,v in ipairs(cmds) do
+		dispatch_symbol(v);
+	end
+end
+
+return function(ctx, surf)
+	local opts = {};
 	set_defaults(ctx, opts);
 
 -- invert y depends a bit on how the rendertarget is mapped, the simple
 -- version is to just flip of the profile requests it
 	local cam = null_surface(1, 1);
-	scale3d_model(cam, 1.0, ctx.scale_y, 1.0);
+	scale3d_model(cam, 1.0, -1.0, 1.0);
 
 -- we may need to use the default 'render to world' when running
 -- monoscopic in a windowed mode
@@ -1495,12 +1639,16 @@ return function(ctx, surf, opts)
 	ctx.reindex_layers = reindex_layer;
 	ctx.input_table = vr_input;
 	ctx.dump = dump;
+	ctx.load_space = load_space;
+	ctx.prefix = prefix;
+
 	ctx.message = function(ctx, msg) print(msg); end;
 
 -- this is actually shared global state, should move to instance into ctx
-	shader_uniform(vrshaders.rect, "curve", "f", opts.curve);
-	shader_uniform(vrshaders.rect_inv, "curve", "f", opts.curve);
+	shader_uniform(vrshaders.rect, "curve", "f", ctx.curve);
+	shader_uniform(vrshaders.rect_inv, "curve", "f", ctx.curve);
 
 -- all UI is arranged into layers of models
 	ctx.layers = {};
+	wm_log("kind=status:message=3dpipe active");
 end

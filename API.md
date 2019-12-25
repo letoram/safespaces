@@ -20,6 +20,7 @@ windows.
                     this path toggles mouse grab on / off which might be
                     needed in som environments.
 
+     /control=name : enable ipc control channel for menu access
      /shutdown : immediately kill all clients and terminate
      /switch/  : collapse safespaces and move clients to a new appl
 
@@ -27,10 +28,22 @@ windows.
           selected : input forwarded to selected model
           view     : input modifies camera orientation
           scale    : input modifies focus selected model scale
+          move     : buttons set axis, motion moves model relative to current position
           rotate   : input modifies selected model orientation
           ipd      : input modifies eye- distance and distortion
                      parameters, repeated calls cycles which parameter
                      that is targeted.
+
+# IPC Control
+
+If the control channel is opened via /control=name a socket will be created in
+ipc/name through which arcan-cfgfs or socat can be used to manipulate and explore
+VR state during runtime.
+
+    socat unix-client:/path/to/ipc/name -
+		ls /
+	  write /hmd-ipd=10.0
+		exec /hmd/reset
 
 # Device Control ( /hmd )
 
@@ -73,6 +86,8 @@ Each individual layer accessed through /layers/layer\_name or
     swap=i    : swap model to the left (< 0) or to the right (> 0) into focus
     cycle=i   : rotate models n steps on the left (< 0) or right (> 0) side
     destroy   : delete the layer and all associated models
+    destroy_protected : delete the layer unless there are protected models,
+                        otherwise delete only non-protected models
     opacity=f : (0..1) set the layer relative opacity, default=1 (opaque)
     nudge=f   :  move the layer anchor relative to the current position
     models/   : subdirectory of all attached models
@@ -142,7 +157,7 @@ From this path you have access to the following properties:
     layout_block=b: block model from layouter or not
     move=fff      : set layer-anchor relative position
     nudge=fff     : like move=fff but relative its current position
-
+    protected=b   : block model from being deleted on space swap
     faces/       : like source= for objects with multiple faces (cubes, spheres, ...)
     events/      : actions to run on certain events
     connpoint/
