@@ -263,6 +263,7 @@ function(ctx, model, source, status)
 				return;
 			end
 
+--action if a child has been spawned, other is to 'swap in' and swallow as a proxy
 			local new_model =
 				layer:add_model("rectangle", model.name .. "_ext_" .. tostring(model.extctr));
 
@@ -271,10 +272,18 @@ function(ctx, model, source, status)
 				return dstfun(ctx, new_model, source, status);
 			end);
 
---action if a child has been spawned, other is to 'swap in' and swallow (terminal case)
 			local parent = model.parent and model.parent or model;
 			new_model.parent = parent;
-			new_model:swap_parent();
+
+--trigger when the client actually is ready
+			local fun;
+			fun = function()
+				table.remove_match(new_model.on_show, fun);
+				if new_model.swap_parent then
+					new_model:swap_parent();
+				end
+			end
+			table.insert(new_model.on_show, fun);
 
 			dstfun(ctx, new_model, source, status);
 		end

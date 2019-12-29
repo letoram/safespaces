@@ -8,6 +8,7 @@
 * Added model property to blocking autolayouter
 * Added model methods for cycling stereoscopic mapping
 * Reworked device detection and screen mapping
+* Child-spawning changed from 'on register' to 'first frame'
 * API path for switching appl
 * Calibration toggle (/hmd/toggle\_calibration)
 * Added IPC control & monitoring, use with socat or arcan-cfgfs mount

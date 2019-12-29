@@ -23,12 +23,13 @@ function safespaces(args)
 	system_load("timer.lua")();
 	system_load("menu.lua")();
 
-	local vrsetup = system_load("vrsetup.lua")();
+-- enable IPC system and intercept logging
+	if (gconfig_get("allow_ipc")) then
+		system_load("ipc.lua")();
+	end
 
 -- map config to keybindings, and load keymap (if specified)
-
-	system_load("ipc.lua")();
-	SYMTABLE = system_load("symtable.lua")();
+	SYMTABLE = system_load("builtin/keyboard.lua")();
 	SYMTABLE.bindings = system_load("keybindings.lua")();
 	SYMTABLE.meta_1 = gconfig_get("meta_1");
 	SYMTABLE.meta_2 = gconfig_get("meta_2");
@@ -66,14 +67,10 @@ function safespaces(args)
 		end
 	end
 
-	if (dev.disable_vrbridge) then
-		preview = alloc_surface(VRESW, VRESH);
-	else
 -- just need a container pipeline, resize this if monoscopic 'normal 3D' output
 -- is needed, otherwise the setup_vr callback will provide a combiner rendertarget
 -- to map to displays, or the individual left/right eye paths.
-		preview = alloc_surface(320, 200);
-	end
+	preview = alloc_surface(gconfig_get("preview_w"), gconfig_get("preview_h"));
 
 	image_tracetag(preview, "preview");
 
@@ -91,31 +88,45 @@ function safespaces(args)
 		return SYMTABLE.mstate[1], SYMTABLE.mstate[2]
 	end
 
--- default handler simply maps whatever to stdout
 	local on_vr =
 	function(device, comb, l, r)
-		dispatch_symbol("/map_display=0");
+		if valid_vid(comb) and dev.no_combiner then
+			delete_image(comb);
+		else
+			dispatch_symbol("/map_display=0");
+		end
 	end
 
 -- rebuild the WM context to add the basic VR setup / management functions
-	vrsetup(WM, preview);
+	local setup = system_load("vrsetup.lua")();
+	setup(WM, preview);
 
 -- but if we want a specific display, we need something else, this becomes
 -- a bit more weird when there are say two displays we need to map, one for
 -- each eye with different synch.
-	if (dev.display) then
+	if (dev.display or dev.display_id) then
 		on_vr =
 		function(device, comb, l, r)
 			wait_for_display(dev,
 			function(dispid)
 				WM.dev.display_id = dispid;
-				dispatch_symbol("/map_display=" .. tostring(dispid));
+
+-- map the preview to all other displays, map the combiner to this one,
+-- don't know how many they are but it's a cheap call so just sweep
+				for i=0,8 do
+					map_video_display(i == dispid and comb or preview, i);
+				end
 			end);
 		end
 	end
 
---	WM:setup_vr(on_vr, dev);
+	WM:setup_vr(on_vr, dev);
 	show_image(preview);
+
+-- tool-loading code and UI primitives shared with durden
+	system_load("icon.lua")();
+	system_load("uiprim/uiprim.lua")();
+	suppl_scan_tools();
 
 -- space can practically be empty and the entire thing controlled from IPC
 	WM:load_space(argtbl.space and argtbl.space or "default.lua");
@@ -136,11 +147,13 @@ function map_video_display(src, id, hint, ...)
 	if not hint then
 		if WM.dev.display_id == id then
 			system_log("kind=display:status=map_target");
+			hint = HINT_PRIMARY;
 			if (WM.dev.map_hint) then
-				hint = WM.dev.map_hint;
+				hint = bit.bor(hint, WM.dev.map_hint);
 			end
+		else
+			hint = 0;
 		end
-		hint = 0;
 	end
 
 	hint = bit.bor(hint, HINT_FIT);
@@ -163,7 +176,9 @@ function(dev, callback)
 -- map the VR combiner stage to it and map the console to the default display
 	display_action =
 	function(name, id)
-		local match = string.match(name, dev.display);
+		local match =
+			(dev.display_id and dev.display_id == id)
+			or string.match(name, dev.display);
 
 		system_log(string.format(
 			"kind=display:status=added:name=%s:target=%s:match=%s",
@@ -282,8 +297,6 @@ function VRES_AUTORES(w, h, vppcm, flags, source)
 	SYMTABLE.mstate[1] = false;
 	SYMTABLE.mstate[2] = false;
 
-	print("autores", w, h, vppcm, flags, source)
-
 	if not WM.dev then
 		system_log("kind=display:status=autores_fail:message=no device");
 		return;
@@ -294,9 +307,10 @@ function VRES_AUTORES(w, h, vppcm, flags, source)
 	resize_video_canvas(w, h);
 
 -- a profile with a combiner stage? update its resolution
-	if (valid_vid(WM.vr_state.combiner)) then
+	if (WM.vr_state and valid_vid(WM.vr_state.combiner)) then
 		image_resize_storage(WM.vr_state.combiner, w, h);
-		move_image(WM.vr_state.combiner, 0, 0);
+		WM.vr_state:relayout();
+		map_video_display(WM.vr_state.combiner, 0);
 	else
 		map_video_display(preview, 0);
 	end

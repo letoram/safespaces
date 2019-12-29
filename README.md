@@ -55,9 +55,10 @@ looks like this:
         oversample_h = 1.0,
         distortion_model = "basic",
         display_rotate = 'cw90',
+        override_projection = false,
         width = 2560,
         height = 1440,
-				map_hint = MAP_FLIP,
+        map_hint = MAP_FLIP,
         hmdarg = "ohmd_index=0",
         bindings = [
             ["F1"] = "mouse=selected"
@@ -74,26 +75,34 @@ display = 'pattern' : This checks for a display EDID matching the lua pattern
 presented by the string rather than going for the first one available. If this
 is set, setup won't progress until the correct display has been found.
 
+display\_id = 'number' : If present, this ignores the display-pattern above
+and just picks whatever that happens to appear as a specific display number,
+where 0 will always be the first, and so on.
+
 display\_rotate = cw90 | ccw90 | 180 | cw90ccw90 : This specifies the base
 orientation of the display.
 
 distortion\_model = basic, none : Using the universal distortion shader from the
 OpenHMD project or disable barrel distortion altogether.
 
-headless = true | false : This mode does not expect to be mapped to a display
-but rather outputs to whatever arcan happens to pick based on the video platform
-in use. This is mainly for windowed like modes.
+override\_projection = false | true : If set to true, this will use a normal
+perspective projection matrix, ignoring whatever was provided by the vr device
+
+no\_combiner = false | true : This removes / disables the combiner surface,
+effectively making the rendering monoscopic only via the preview window.
+
+headless = false | true : This will ignore mapping the head/rotation tracking
+to the output cameras, causing them to be locked in place.
 
 There are some special built-in profiles:
 
 * 'desktop'    : 3D desktop only, no vr devices or stereoscopic rendering
-* 'basic'      : Just draw to the default display and treat it as the VR display
-* 'simulated'  : 'Headless' operation: stereo with distortion and no combiner stage
+* 'client'     : Used as a client in another desktop system
 
-'Basic' is useful if you are trying to run arcan as a normal client with an
-outer display server like Xorg or on OS X. It draws as a normal window and
-you get to use whatever controls the display server provides to move it to
-the HMD display.
+Client is intended to be used with arcan builds that act as a client inside
+another desktop system and not as a display server itself, that would be 'lwa'
+(where arcan+safespaces is used as a client to a normal arcan desktop), 'sdl'
+or 'sdl2'.
 
 ## Configuration
 
@@ -356,14 +365,13 @@ Milestone 1:
   - [ ] Launch targets
   - [x] Xarcan
   - [x] Wayland-simple (toplevel/fullscreen only)
-	  - [ ] Xwayland
-		- [ ] full xdg-toplevel
+  - [ ] Wayland-composited (xdg-popups, subsurfaces, xwayland)
 
 - [ ] Tools
   - [ ] Basic 'listview' popup
   - [x] Console
   - [ ] Button-grid / Streamdeck
-	- [x] Socket- control IPC
+  - [x] Socket- control IPC
 
 Milestone 2:
 

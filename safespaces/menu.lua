@@ -156,6 +156,31 @@ function menu_run(menu, inpath)
 	return true;
 end
 
+function menu_register(menu, path, entry)
+	local menu;
+	local elems = string.split(path, '/');
+
+	if (#elems > 0 and elems[1] == "") then
+		table.remove(elems, 1);
+	end
+
+	for k,v in ipairs(elems) do
+		local found = false;
+		for i,j in ipairs(level) do
+			if (j.name == v and type(j.handler) == "table") then
+				found = true;
+				level = j.handler;
+				break;
+			end
+		end
+		if (not found) then
+			warning(string.format("attach-%s (%s) failed on (%s)",root, path, v));
+			return;
+		end
+	end
+	table.insert(level, entry);
+end
+
 function menu_resolve(line, noresolve)
 	local ns = string.sub(line, 1, 1);
 	if (ns ~= "/") then

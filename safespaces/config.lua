@@ -11,6 +11,8 @@ return {
 	curve = 0.9,
 	layer_falloff = 0.9,
 	animation_speed = 30,
+	preview_w = 2560,
+	preview_h = 1440,
 	prefix = "",
 
 -- composition rt- set to -1.0 to invert
@@ -21,13 +23,17 @@ return {
 
 -- external control
 	control_path = "control",
+	allow_ipc = true,
 
 -- Special application settings
 	terminal_font = "hack.ttf",
-	terminal_font_sz = 28,
+	terminal_font_sz = 18,
 	terminal_opacity = 1,
+
+-- icon set to be used
+	icon_set = "default",
 
 -- Input Controls
 	meta_1 = "LMETA", -- "COMPOSE" or META on some platforms
-	meta_2 = "RMETA"
+	meta_2 = "SYSREQ"
 };
