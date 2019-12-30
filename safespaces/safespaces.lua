@@ -15,6 +15,18 @@ local function console_forward(...)
 	system_log("kind=dispatch:" .. string.format(...));
 end
 
+-- run when VR is activated
+local function vr_autorun()
+	if (resource("autorun.lua", APPL_RESOURCE)) then
+		local list = system_load("autorun.lua")();
+		if type(list) == "table" then
+			for _,v in ipairs(list) do
+				dispatch_symbol(v);
+			end
+		end
+	end
+end
+
 function safespaces(args)
 	system_load("suppl.lua")();
 	system_log = suppl_add_logfn("system");
@@ -81,6 +93,7 @@ function safespaces(args)
 	(system_load("ssmenus.lua")())(WM.menu);
 	dispatch_symbol =
 	function(sym)
+		print(sym);
 		return menu_run(WM.menu, sym, console_forward);
 	end
 
@@ -95,6 +108,7 @@ function safespaces(args)
 		else
 			dispatch_symbol("/map_display=0");
 		end
+		vr_autorun();
 	end
 
 -- rebuild the WM context to add the basic VR setup / management functions
@@ -116,6 +130,7 @@ function safespaces(args)
 				for i=0,8 do
 					map_video_display(i == dispid and comb or preview, i);
 				end
+				vr_autorun();
 			end);
 		end
 	end
@@ -132,10 +147,6 @@ function safespaces(args)
 	WM:load_space(argtbl.space and argtbl.space or "default.lua");
 
 -- just hook for custom things
-	if (resource("autorun.lua", APPL_RESOURCE)) then
-		system_load("autorun.lua")();
-	end
-
 	system_log("kind=status:message=init over");
 end
 

@@ -27,8 +27,8 @@ return {
 
 -- Special application settings
 	terminal_font = "hack.ttf",
-	terminal_font_sz = 18,
-	terminal_opacity = 1,
+	terminal_font_sz = 24,
+	terminal_opacity = 0.9,
 
 -- icon set to be used
 	icon_set = "default",

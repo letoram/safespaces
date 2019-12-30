@@ -41,9 +41,9 @@ ipc/name through which arcan-cfgfs or socat can be used to manipulate and explor
 VR state during runtime.
 
     socat unix-client:/path/to/ipc/name -
-		ls /
-	  write /hmd-ipd=10.0
-		exec /hmd/reset
+    ls /
+    write /hmd-ipd=10.0
+    exec /hmd/reset
 
 # Device Control ( /hmd )
 
@@ -83,6 +83,8 @@ Each individual layer accessed through /layers/layer\_name or
 
     focus     : set the layer as having input focus
     terminal  : add a rectangle model tied to a new terminal group
+    media     : add a rectangle model tied to a media feed
+    remoting  : add a rectangle model tied to a remote desktop session
     swap=i    : swap model to the left (< 0) or to the right (> 0) into focus
     cycle=i   : rotate models n steps on the left (< 0) or right (> 0) side
     destroy   : delete the layer and all associated models
@@ -167,6 +169,9 @@ And the following actions:
     merge_collapse : change vertical hierarchy children to horizontal
     cycle_stereo   : step between the different stereoscopic modes
     child_swap=i   : -n .. +n, swap hierarchy position with its children (positioner hint)
+
+The latest created model in any layer can also be accessed through the shortcut:
+    /latest
 
 # Connection Points
 

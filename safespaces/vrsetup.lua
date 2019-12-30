@@ -127,14 +127,13 @@ void main()
 	float cg = texture2D(map_tu0, tc_g).g;
 	float cb = texture2D(map_tu0, tc_b).b;
 
-/* 1.0 - obj_opacity == tu1 blend introduction
+/* 1.0 - obj_opacity == tu1 blend introduction */
 	if (obj_opacity < 1.0){
 		float weight = 1.0 - obj_opacity;
 		cr = mix(cr, texture2D(map_tu1, tc_r).r, weight);
 		cg = mix(cg, texture2D(map_tu1, tc_g).g, weight);
-		cb = mix(cb, texture2D(map_tu1, tc.b).b, weight);
+		cb = mix(cb, texture2D(map_tu1, tc_b).b, weight);
 	}
-*/
 
 	gl_FragColor = vec4(cr, cg, cb, 1.0);
 }
@@ -333,6 +332,30 @@ local function relayout_combiner(vr)
 --	));
 end
 
+local function vr_passthrough(vr, left, right)
+	local left_ok = valid_vid(left);
+	local right_ok = valid_vid(right);
+
+-- disable
+	if not left_ok and not right_ok then
+		blend_image(vr.rt_l, 1.0);
+		blend_image(vr.rt_r, 1.0);
+		local black = fill_surface(32, 32, 0, 0, 0);
+		set_image_as_frame(vr.rt_l, black, 1);
+		set_image_as_frame(vr.rt_r, black, 1);
+		delete_image(black);
+		return;
+	end
+
+	if left_ok then
+		set_image_as_frame(vr.rt_l, left, 1);
+	end
+
+	if right_ok then
+		set_image_as_frame(vr.rt_r, right, 1);
+	end
+end
+
 -- this function takes the metadata provided by the special 'neck'
 -- limb in the vr model and constructs the combiner surface which is
 -- what should be sent to the display (assuming non-separate displays
@@ -361,13 +384,14 @@ local function build_vr_pipe(wnd, callback, opts, bridge, md, neck)
 -- relayout combiner
 	local l_eye = alloc_surface(320, 200);
 	image_framesetsize(l_eye, 2, FRAMESET_MULTITEXTURE);
+
 	local l_eye_calib = load_image("calib_left.png");
 	image_tracetag(l_eye_calib, "left_calibration");
 	image_tracetag(l_eye, "left_eye");
 
 	local r_eye = alloc_surface(320, 200);
 	local r_eye_calib = load_image("calib_right.png");
-	image_framesetsize(l_eye, 2, FRAMESET_MULTITEXTURE);
+	image_framesetsize(r_eye, 2, FRAMESET_MULTITEXTURE);
 
 	image_tracetag(r_eye_calib, "right_calibration");
 	image_tracetag(r_eye, "right_eye");
@@ -493,7 +517,8 @@ local function build_vr_pipe(wnd, callback, opts, bridge, md, neck)
 		oversample_h = wnd.oversample_h,
 		rotate = opts.display_rotate,
 		wnd = wnd,
-		relayout = relayout_combiner
+		relayout = relayout_combiner,
+		set_passthrough = vr_passthrough
 	};
 
 -- the distortion model has Three options, no distortion, fragment shader
@@ -719,6 +744,10 @@ end
 
 local function model_destroy(model)
 	local layer = model.layer;
+
+	if (model.layer.ctx.latest_model == model) then
+		model.layer.ctx.latest_model = nil;
+	end
 
 -- reparent any children
 	local dst;
@@ -1052,6 +1081,12 @@ local function model_nudge(model, x, y, z)
 		model.layer_pos[1], model.layer_pos[2], model.layer_pos[3]);
 end
 
+local function model_popup(model, vid, input, closure)
+-- FIXME: build mesh and attach to model, bind [vid] to the mesh surface
+-- FIXME: intercept input, use ESCAPE as an universal cancel
+-- FIXME: trigger closure when input returns true or ESCAPE cancels
+end
+
 local function model_switch_mesh(model, kind, ref)
 	local cont;
 	local depth = model.layer.depth;
@@ -1180,7 +1215,8 @@ local function build_model(layer, kind, name, ref)
 		set_display_source = model_display_source,
 		preprocess_input = model_input,
 		can_layout = model_can_layout,
-		switch_mesh = model_switch_mesh
+		switch_mesh = model_switch_mesh,
+		popup = model_popup,
 	};
 
 	local shader = vrshaders.geom;
@@ -1254,6 +1290,7 @@ local function layer_add_model(layer, kind, name, ...)
 		table.insert(layer.models, model);
 	end
 	model.layer = layer;
+	layer.ctx.latest_model = model;
 
 	return model;
 end
@@ -1275,6 +1312,46 @@ local function layer_select(layer)
 	layer.ctx.selected_layer = layer;
 	move3d_model(layer.anchor, 0, 0, layer:zpos(), layer.ctx.animation_speed);
 -- here we can set alpha based on distance as well
+end
+
+local feed_counter = 0;
+local function layer_add_feed(layer, opts, feedtype)
+	if not opts or #opts == 0 then
+		return;
+	end
+
+	local model = layer:add_model("rectangle", "feed_" .. tostring(feed_counter));
+	if (not model) then
+		return;
+	end
+	feed_counter = feed_counter + 1;
+
+	local feedfun =
+	function(source, status)
+		local fun = setup_event_handler(model, source, "multimedia");
+		target_updatehandler(source, fun);
+		fun(source, status);
+	end
+
+	local vid;
+	if not feedtype or (feedtype == "decode" and resource(opts)) then
+		vid = launch_decode(opts, feedfun);
+	else
+		vid = launch_avfeed(opts, feedtype, feedfun);
+	end
+
+	if not valid_vid(vid) then
+		model:destroy();
+		wm_log("feed_failure=" .. opts);
+		return;
+	end
+	model:set_external(vid, true);
+	link_image(vid, model.vid);
+	if not layer.selected then
+		model:select();
+	end
+
+	wm_log("new_feed=" .. opts);
 end
 
 local term_counter = 0;
@@ -1588,6 +1665,7 @@ local function layer_add(ctx, tag)
 
 		add_model = layer_add_model,
 		add_terminal = layer_add_terminal,
+		add_media = layer_add_feed,
 
 		count_root = layer_count_root,
 		count_children = layer_count_children,
@@ -1630,10 +1708,14 @@ local function vr_input(ctx, iotbl, multicast)
 	if (not ctx.selected_layer or not ctx.selected_layer.selected) then
 		return;
 	end
+
+-- FIXME: missing popup grab / routing
+
 	local dst = ctx.selected_layer.selected.external;
 	if (not valid_vid(dst, TYPE_FRAMESERVER)) then
 		return;
 	end
+
 	target_input(dst, iotbl);
 end
 

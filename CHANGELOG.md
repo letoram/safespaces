@@ -1,6 +1,5 @@
 0.2 (ongoing)
 
-* Added 'prelaunch' option to device profile
 * Basic support for xwayland- clients
 * New device profiles for: Rift, Vive, VivePRO, LG100
 * Der-B added controls for handling rotated displays
@@ -12,12 +11,13 @@
 * API path for switching appl
 * Calibration toggle (/hmd/toggle\_calibration)
 * Added IPC control & monitoring, use with socat or arcan-cfgfs mount
-
-New controls / options:
+* Added support for camera passthrough blending (/hmd/passthrough)
+* Added support for media/remoting surfaces (/layers/current/media,remoting)
+* Code for button-surfaces, popups and icons
+* Shortcut path for /latest added model
 * mouse controls are magnified or minified by holding meta keys
 * /mouse=ipd : adjust HMD parameters (cycle for distortion, abberation, etc.)
 * /mouse=move : adjust scale
-
 * Added menu controls for grab toggle
 
 0.1 : 28/3/2018 - First Release

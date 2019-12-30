@@ -88,6 +88,7 @@ end
 
 clut["multimedia"] = model_eventhandler;
 clut["game"] = model_eventhandler;
+clut["bridge-x11"] = model_eventhandler;
 
 clut["hmd-l"] = function(ctx, model, source, status)
 	if (status.kind == "segment_request") then

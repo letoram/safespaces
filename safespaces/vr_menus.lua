@@ -138,11 +138,13 @@ end
 
 local function set_source_asynch(wnd, layer, model, subid, source, status)
 	if (status.kind == "load_failed" or status.kind == "terminated") then
-		blend_image(model.vid, model.opacity, model.ctx.animation_speed, model.ctx.animation_interp);
+		blend_image(model.vid,
+			model.opacity, model.ctx.animation_speed, model.ctx.animation_interp);
 		delete_image(source);
 		return;
 	elseif (status.kind == "loaded") then
-		blend_image(model.vid, model.opacity, model.ctx.animation_speed, model.ctx.animation_interp);
+		blend_image(model.vid,
+			model.opacity, model.ctx.animation_speed, model.ctx.animation_interp);
 		if (subid) then
 			set_image_as_frame(model.vid, source, subid);
 		else
@@ -218,14 +220,23 @@ local function add_mapping_options(tbl, wnd, layer, model, subid)
 		if (not resource(res)) then
 			return;
 		end
+		wm_log(string.format(
+			"model=%s:resource=%s:flip=%s", model.name, res, flip and "yes" or "no"));
+
 		if (flip) then
 			switch_default_imageproc(IMAGEPROC_FLIPH);
 		end
-		local vid = load_image_asynch(res,
-			function(...)
-				set_source_asynch(wnd, layer, model, subid, ...);
-			end
-		);
+
+-- temporary workaround to troubleshoot y-invert issues
+--		local vid = load_image_asynch(res,
+--			function(...)
+--				set_source_asynch(wnd, layer, model, subid, ...);
+--			end
+--		);
+		local vid = load_image(res);
+		if (valid_vid(vid)) then
+			set_source_asynch(wnd, layer, model, subid, vid, {kind = "loaded"});
+		end
 		switch_default_imageproc(IMAGEPROC_NORMAL);
 
 -- link so life cycle matches model
@@ -691,6 +702,25 @@ local function get_layer_menu(wnd, layer)
 			end
 		},
 		{
+			label = "Open Feed",
+			name = "media",
+			description = "Add a decode premapped model to the layer",
+			kind = "value",
+			validator = shared_valid_str,
+			handler = function(ctx, val)
+				layer:add_media(val);
+			end
+		},
+		{
+			label = "Open Remoting",
+			name = "remoting",
+			description = "Add a remoting premapped model to the layer",
+			kind = "value",
+			handler = function(ctx, val)
+				layer:add_media(val, "remoting");
+			end
+		},
+		{
 			name = "models",
 			label = "Models",
 			description = "Manipulate individual models",
@@ -948,6 +978,83 @@ local function layer_menu(wnd)
 	return res;
 end
 
+local function passthrough_menu(wnd, opts)
+	return {
+	{
+		name = "opacity",
+		label = "opacity",
+		kind = "value",
+		initial = function()
+			local opa = image_surface_resolve(wnd.vr_state.rt_l).opacity;
+			return tostring(opa);
+		end,
+		description = "Adjust mixing rate",
+		validator = gen_valid_num(0, 100),
+		handler = function(ctx, val)
+			local num = tonumber(val) * 0.01;
+			blend_image(wnd.vr_state.rt_l, num, wnd.animation_speed);
+			blend_image(wnd.vr_state.rt_r, num, wnd.animation_speed);
+		end,
+	},
+	{
+		name = "source_lr",
+		label = "Source (L/R)",
+		kind = "value",
+		description = "Specify source as an afsrv_decode argument string",
+		validator = shared_valid_str,
+		handler = function(ctx, val)
+			local vid = launch_avfeed(
+			val, "decode", function(source, status)
+				if status.kind == "preroll" then
+					wnd.vr_state:set_passthrough(source, source);
+
+				elseif status.kind == "terminated" then
+					delete_image(source);
+					wnd.vr_state:set_passthrough();
+				end
+			end);
+		end
+	},
+	{
+		name = "source_l",
+		label = "Source (L)",
+		kind = "value",
+		description = "Specify source for the left eye as an afsrv_decode argument string",
+		validator = shared_valid_str,
+		handler = function(ctx, val)
+			local vid = launch_avfeed(
+				val, "decode", function(source, status)
+					wm_log(status.kind);
+					if status.kind == "resized" then
+						wnd.vr_state:set_passthrough(source);
+					elseif status.kind == "terminated" then
+						delete_image(source);
+						wnd.vr_state:set_passthrough(BADID);
+					end
+				end);
+		end
+	},
+	{
+		name = "source_r",
+		label = "Source (R)",
+		kind = "value",
+		description = "Specify source for the right eye as an afsrv_decode argument string",
+		validator = shared_valid_str,
+		handler = function(ctx, val)
+			local vid = launch_avfeed(
+				val, "decode", function(source, status)
+					if status.kind == "resized" then
+						wnd.vr_state:set_passthrough(nil, source);
+					elseif status.kind == "terminated" then
+						delete_image(source);
+						wnd.vr_state:set_passthrough(nil, BADID);
+					end
+				end);
+		end
+	}
+	};
+end
+
 local function hmd_config(wnd, opts)
 	return {
 	{
@@ -958,6 +1065,16 @@ local function hmd_config(wnd, opts)
 	handler = function()
 		reset_target(wnd.vr_state.vid);
 	end
+	},
+	{
+	name = "passthrough",
+	label = "Passthrough",
+	kind = "action",
+	submenu = true,
+	description = "Control mixing in an external source over the vr scene",
+	handler = function()
+		return passthrough_menu(wnd, opts);
+	end,
 	},
 	{
 	name = "ipd",
@@ -1081,6 +1198,19 @@ local res = {{
 	description = "Model layers for controlling models and data sources",
 	handler = function()
 		return layer_menu(wnd, opts);
+	end
+},
+{
+	name = "latest",
+	kind = "action",
+	submenu = true,
+	label = "Latest",
+	description = "Access the latest created model",
+	eval = function()
+		return wnd.latest_model ~= nil;
+	end,
+	handler = function()
+		return model_settings_menu(wnd, wnd.latest_model.layer, wnd.latest_model);
 	end
 },
 {

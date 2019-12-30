@@ -137,7 +137,13 @@ function menu_run(menu, inpath)
 -- split path/to/value=arg and account for extra = in arg
 	local tbl = string.split(inpath, "=");
 	local cmdtbl = string.split(tbl[1], "/");
-	local val = tbl[2] and tbl[2] or "";
+	local val = "";
+
+	if (tbl[2]) then
+		table.remove(tbl, 1);
+		val = table.concat(tbl, "=");
+	end
+
 	if (cmdtbl[1] == "") then
 		table.remove(cmdtbl, 1);
 	end
