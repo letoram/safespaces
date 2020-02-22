@@ -635,24 +635,26 @@ local function model_display_source(model, vid, altvid)
 -- on or off.
 	if (model.display_index) then
 		set_image_as_frame(model.vid, vid, model.display_index);
-	else
-		if (valid_vid(vid)) then
-			image_sharestorage(vid, model.vid);
-		end
+		return;
+	end
 
-		if (valid_vid(altvid)) then
+	if (valid_vid(vid)) then
+		image_sharestorage(vid, model.vid);
+	end
+
+	if (valid_vid(altvid)) then
 -- we can't 'extract' the source easily again so track it here instead of say
 -- setting active store and sharing that way
-			if valid_vid(model.alt_container) then
-				delete_image(model.alt_container);
-			end
-			model.alt_container = null_surface(1, 1);
-			image_sharestorage(vid, model.alt_container);
-			link_image(model.alt_container, model.anchor);
-
-			image_framesetsize(model.vid, 2, FRAMESET_MULTITEXTURE);
-			set_image_as_frame(model.vid, altvid, 1);
+		if valid_vid(model.alt_container) then
+			delete_image(model.alt_container);
 		end
+
+		model.alt_container = null_surface(1, 1);
+		image_sharestorage(vid, model.alt_container);
+		link_image(model.alt_container, model.anchor);
+
+		image_framesetsize(model.vid, 2, FRAMESET_MULTITEXTURE);
+		set_image_as_frame(model.vid, altvid, 1);
 	end
 end
 
@@ -1006,6 +1008,7 @@ local function model_connpoint(model, name, kind, nosw)
 		model.layer:relayout();
 
 	elseif (kind == "temporary") then
+		model.restore_flip = model.force_flip;
 	end
 end
 
@@ -1686,6 +1689,7 @@ local function layer_add(ctx, tag)
 
 		name = tag,
 
+		ignore = false,
 		dx = 0, dy = 0, dz = 0,
 		radius = 0.5,
 		depth = 0.1,
@@ -1717,6 +1721,44 @@ local function vr_input(ctx, iotbl, multicast)
 	end
 
 	target_input(dst, iotbl);
+end
+
+local function layer_step_focus(ctx, delta)
+-- ignore broken selections
+	if not (ctx.selected_layer or ctx.layer.ignore) then
+		wm_log("input_focus:broken");
+		return;
+	end
+
+	local ind = ctx.selected_layer.index;
+	local ns = math.abs(delta);
+	local step = delta > 0 and 1 or -1;
+
+-- find to next non-ignore layer
+	local find_next = function(ind)
+		local ni = ind;
+		repeat
+			ni = ni + step;
+			if ni == 0 then
+				ni = #ctx.layers;
+			elseif ni > #ctx.layers then
+				ni = 1;
+			end
+			wm_log(string.format(
+				"next:%d:step:%d:%s", ni, step, ctx.layers[ni].name));
+		until ni == ind or not ctx.layers[ni].ignore;
+		return ni;
+	end
+
+	for i=1,ns do
+		ind = find_next(ind);
+		wm_log(string.format("now:%d, selected=%d", ind, ctx.selected_layer.index));
+		if (ind == ctx.selected_layer.index) then
+			break;
+		end
+	end
+	wm_log("input_focus:layer=" .. ctx.layers[ind].name);
+	ctx.selected_layer = ctx.layers[ind];
 end
 
 local function load_space(ctx, path)
@@ -1762,11 +1804,13 @@ return function(ctx, surf)
 -- actual vtable and properties
 	ctx.default_layouter = system_load(prefix .. "/layouters/default.lua")();
 	ctx.add_layer = layer_add;
+	ctx.layer_step_focus = layer_step_focus;
 	ctx.camera = cam;
 	ctx.vr_pipe = surf;
 	ctx.setup_vr = setup_vr_display;
 	ctx.reindex_layers = reindex_layer;
 	ctx.input_table = vr_input;
+	ctx.step_focus = layer_step;
 	ctx.dump = dump;
 	ctx.load_space = load_space;
 	ctx.prefix = prefix;

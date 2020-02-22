@@ -1494,6 +1494,10 @@ function suppl_add_logfn(prefix)
 		local handler = nil;
 
 		prefixes[prefix] = function(msg)
+			print(msg);
+			if true then
+				return;
+			end
 			local exp_msg = CLOCK .. ":" .. msg .. "\n";
 			if (handler) then
 				handler(exp_msg);

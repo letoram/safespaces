@@ -131,6 +131,7 @@ local function get_layer_settings(wnd, layer)
 		kind = "value",
 		handler = function(ctx, val)
 			layer.ignore = val == "true";
+			wm_log("layer=" .. layer.name .. "ignore=" .. tostring(layer.ignore));
 		end
 	},
 	};
@@ -177,6 +178,17 @@ local function build_connpoint(wnd, layer, model)
 			validator = function(val) return val and string.len(val) > 0; end,
 			handler = function(ctx, val)
 				model:set_connpoint(val, "temporary");
+			end
+		},
+		{
+			name = "temporary_flip",
+			label = "temporary",
+			kind = "value",
+			hint = "(connpoint name)",
+			description = "like temporary, but force_flip regardless of normal state",
+			validator = function(val) return val and string.len(val) > 0; end,
+			handler = function(ctx, val)
+				model:set_connpoint(val, "temporary-flip");
 			end
 		},
 		{
@@ -227,16 +239,12 @@ local function add_mapping_options(tbl, wnd, layer, model, subid)
 			switch_default_imageproc(IMAGEPROC_FLIPH);
 		end
 
--- temporary workaround to troubleshoot y-invert issues
---		local vid = load_image_asynch(res,
---			function(...)
---				set_source_asynch(wnd, layer, model, subid, ...);
---			end
---		);
+-- this >should< be the right imageproc when asynch is loaded
 		local vid = load_image(res);
 		if (valid_vid(vid)) then
 			set_source_asynch(wnd, layer, model, subid, vid, {kind = "loaded"});
 		end
+
 		switch_default_imageproc(IMAGEPROC_NORMAL);
 
 -- link so life cycle matches model
@@ -841,6 +849,21 @@ local function get_layer_menu(wnd, layer)
 			end
 		},
 		{
+			name = "hide_show",
+			label = "Hide/Show",
+			kind = "action",
+			handler = function(ctx, val)
+				if layer.old_opacity then
+					blend_image(layer.anchor, layer.old_opacity, wnd.animation_speed, wnd.animation_interp);
+					layer.old_opacity = nil;
+				else
+					layer.old_opacity = image_surface_properties(layer.anchor).opacity;
+					blend_image(layer.anchor, 0.0, wnd.animation_speed, wnd.animation_interp);
+				end
+			end
+		},
+
+		{
 			name = "focus",
 			label = "Focus",
 			description = "Set this layer as the active focus layer",
@@ -898,6 +921,24 @@ local function layer_menu(wnd)
 			eval = function() return wnd.selected_layer ~= nil; end,
 			label = "Current",
 			handler = function() return get_layer_menu(wnd, wnd.selected_layer); end
+		});
+		table.insert(res, {
+			name = "cycle_input",
+			kind = "value",
+			label = "Cycle Input Focus",
+			hint = "(-3..3, !0)",
+			description = "Shift input focus n layers",
+			validator = function(val)
+				local vl = tonumber(val);
+				if vl and vl ~= 0 and vl > -4 and vl < 4 then
+					return true;
+				end
+			end,
+			handler = function(ctx, val)
+				local steps = tonumber(val);
+				wm_log("bilbo");
+				wnd:layer_step_focus(steps);
+			end
 		});
 
 		table.insert(res, {

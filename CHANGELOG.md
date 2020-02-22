@@ -19,5 +19,7 @@
 * /mouse=ipd : adjust HMD parameters (cycle for distortion, abberation, etc.)
 * /mouse=move : adjust scale
 * Added menu controls for grab toggle
+* Added layer-cycle controls (/layers/cycle\_input)
+* Added layer control for visibility toggle (/layers/current/hide\_show)
 
 0.1 : 28/3/2018 - First Release

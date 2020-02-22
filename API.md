@@ -63,7 +63,7 @@ This path is special, and populated by globbing the spaces subdirectory
 for matching profiles. To load, specify /space/spacename.lua and it will
 activate.
 
-# Layer Creation ( /layers )
+# Layer Creation / Generic control ( /layers )
 
 Layers provide a positional anchor to which you attach and group models.
 Only one layer can be selected at a time, with one model as input focus.
@@ -75,6 +75,7 @@ how the different objects will be positioned.
     /layers/add=name      : create a new layer with the specified (unique) name
     /layers/layer_name    : name comes from the add=name call and is a submenu
     /layers/current       : refers to the currently selected layer.
+    /layers/cycle_input=n : switch input n layers forward or backwards (< 0)
 
 # Layer Access
 
@@ -91,6 +92,7 @@ Each individual layer accessed through /layers/layer\_name or
     destroy_protected : delete the layer unless there are protected models,
                         otherwise delete only non-protected models
     opacity=f : (0..1) set the layer relative opacity, default=1 (opaque)
+    hide_show : switch layer visibility on/off (input focus remains)
     nudge=f   :  move the layer anchor relative to the current position
     models/   : subdirectory of all attached models
     settings/ : parameters that affect layout and model attachment

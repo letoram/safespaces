@@ -26,7 +26,12 @@ local function apply_connrole(layer, model, source)
 			model.layer:relayout();
 			rv = true;
 
-		elseif (model.ext_kind == "temporary" and valid_vid(model.source)) then
+-- we also come here if the original connection has terminated, and the
+-- temporary action then would restore the original source
+		elseif (
+			((model.ext_kind == "temporary" or model.ext_kind == "temporary-flip"))
+			and valid_vid(model.source)) then
+			model.force_flip = model.restore_flip;
 			model:set_display_source(model.source);
 			rv = true;
 		end
@@ -142,15 +147,17 @@ local function default_alloc_handler(ctx, model, source, status)
 	new_model:show();
 end
 
+-- this corresponds to a 'toplevel', there can be multiple of these, and it is
+-- the 'set_toplevel that is the most recent which should be active on the model
 wlut["application"] =
 function(ctx, model, source, status)
 	if status.kind == "allocated" then
-		default_alloc_handler(ctx, model, source, status);
+--		default_alloc_handler(ctx, model, source, status);
+		link_image(source, model.vid);
+		model:set_external(source);
 	elseif status.kind == "message" then
 
 	end
--- this corresponds to a 'toplevel', there can be multiple of these, and it is
--- the 'set_toplevel that is the most recent which should be active on the model
 end
 
 wlut["multimedia"] =
@@ -163,7 +170,9 @@ wlut["bridge-x11"] =
 function(ctx, model, source, status)
 -- xwayland surface, so this has its own set of messages
 	if status.kind == "allocated" then
-		default_alloc_handler(ctx, model, source, status);
+		link_image(source, model.vid);
+
+--		default_alloc_handler(ctx, model, source, status);
 	end
 end
 

@@ -35,5 +35,5 @@ return {
 
 -- Input Controls
 	meta_1 = "LMETA", -- "COMPOSE" or META on some platforms
-	meta_2 = "SYSREQ"
+	meta_2 = "RMETA"
 };

@@ -26,7 +26,7 @@ print = function(...)
 	local tbl = {...};
 	local fmtstr = string.rep("%s\t", #tbl);
 	local msg = string.format(fmtstr, ...);
-	print_override(msg);
+--	print_override(msg);
 	old_print(msg);
 end
 

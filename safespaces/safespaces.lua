@@ -1,6 +1,10 @@
 -- placeholder, may be set if we need to wait for a specific display
 local system_log;
 
+
+local known_displays = {
+};
+
 local display_action = function()
 	system_log("kind=display:status=ignored");
 end
@@ -204,6 +208,11 @@ function(dev, callback)
 		display_action = function()
 		end
 	end
+
+-- we might already know about the display, then just trigger the action
+	for i,v in pairs(known_displays) do
+		display_action(v, i);
+	end
 end
 
 local function keyboard_input(iotbl)
@@ -290,13 +299,16 @@ function safespaces_display_state(action, id)
 			return;
 		end
 		system_log(string.format("kind=display:status=added:id=%d:name=%s", id, name));
-
+		known_displays[id] = name;
 -- if we are waiting for this display, then go for it
 		display_action( name, id );
 
 -- plug / unplug is not really handled well now
 	elseif (action == "removed") then
 		system_log(string.format("kind=display:status=removed:id=%d", id));
+		known_displays[id] = nil;
+	else
+		system_log(string.format("kind=display:status=" .. action));
 	end
 end
 
