@@ -1,7 +1,7 @@
-local function run_entry(menu, cmd, val, path)
+local function run_entry(menu, cmd, val, path, inpath)
 	local ent = table.find_key_i(menu, "name", cmd);
 	if (not ent) then
-		return false, string.format("status=missing:path=%s", path);
+		return false, string.format("status=missing:path=%s", inpath);
 	end
 	ent = menu[ent];
 
@@ -152,7 +152,7 @@ function menu_run(menu, inpath)
 	local path = {};
 
 	while (cmd) do
-		menu, msg = run_entry(menu, cmd, val, path);
+		menu, msg = run_entry(menu, cmd, val, path, inpath);
 		if menu == false then
 			return false, msg;
 		end
