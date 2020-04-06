@@ -1,7 +1,7 @@
 local function run_entry(menu, cmd, val, path)
 	local ent = table.find_key_i(menu, "name", cmd);
 	if (not ent) then
-		return false, string.format("status=missing:path=%s", inpath);
+		return false, string.format("status=missing:path=%s", path);
 	end
 	ent = menu[ent];
 
