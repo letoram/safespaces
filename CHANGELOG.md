@@ -1,7 +1,7 @@
 0.2 (ongoing)
 
 * Basic support for xwayland- clients
-* New device profiles for: Rift, Vive, VivePRO, LG100
+* New device profiles for: Rift, Vive, VivePRO, LG100, Nreal Air
 * Der-B added controls for handling rotated displays
 * Added model methods for fixed positioning
 * Added model property to blocking autolayouter

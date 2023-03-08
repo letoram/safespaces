@@ -1457,8 +1457,6 @@ local function display_data(id)
 	return strip(model), strip(serial);
 end
 
-
-
 function suppl_display_name(id)
 -- first mapping nonsense has previously made it easier (?!)
 -- getting a valid EDID in some cases
@@ -1484,7 +1482,7 @@ local prefixes = {
 };
 function suppl_add_logfn(prefix)
 	if (prefixes[prefix]) then
-		return prefixes[prefix];
+		return prefixes[prefix], string.format;
 	end
 
 -- nest one level so we can pull the scope down with us
@@ -1526,5 +1524,5 @@ function suppl_add_logfn(prefix)
 	end
 
 	logscope();
-	return prefixes[prefix];
+	return prefixes[prefix], string.format;
 end

@@ -3,8 +3,8 @@
 --
 
 local setup_event_handler = system_load("vr_atypes.lua")()
-local wm_log = suppl_add_logfn("wm");
-local hmd_log = suppl_add_logfn("hmd");
+local wm_log, hmd_fmt = suppl_add_logfn("wm");
+local hmd_log, hmd_fmt = suppl_add_logfn("hmd");
 
 local vert = [[
 uniform mat4 modelview;
@@ -267,8 +267,8 @@ local function relayout_combiner(vr)
 	local pos_l_eye_y = 0;
 	local pos_r_eye_x = halfw;
 	local pos_r_eye_y = 0;
-	local eye_w = halfw;
-	local eye_h = disph;
+	local eye_w = halfw and halfw or VRESW;
+	local eye_h = disph and disph or VRESH;
 
 	if ("ccw90" == vr.rotate) then
 		rotate_l = 90;
@@ -427,8 +427,6 @@ local function build_vr_pipe(wnd, callback, opts, bridge, md, neck)
 -- The third is a stencil mask over the rendertarget (missing Lua API),
 -- could possibly be done with some noclear- combination and temporary
 -- setting a clipping source to a rendertaget.
-	hmd_log("kind=build_pipe");
-
 	combiner = alloc_surface(dispw, disph);
 	image_tracetag(combiner, "combiner");
 
@@ -437,21 +435,31 @@ local function build_vr_pipe(wnd, callback, opts, bridge, md, neck)
 		link_image(combiner, wnd.anchor);
 	end
 	define_rendertarget(combiner,
-		{l_eye, l_eye_calib, r_eye, r_eye_calib});
+		{l_eye,
+		l_eye_calib,
+		r_eye,
+		r_eye_calib
+	});
 
 -- since we don't show any other models, this is fine without a depth buffer
 	local cam_l = null_surface(1, 1);
 	local cam_r = null_surface(1, 1);
 
-	local l_fov = math.deg(md.left_fov);
-	local r_fov = math.deg(md.right_fov);
+	local l_fov = 45;
+	local r_fov = 45;
+	if (md.left_fov > 0) then
+		l_fov = math.deg(md.left_fov);
+	end
+	if (md.right_fov > 0) then
+		r_fov = math.deg(md.right_fov);
+	end
 
 	if (md.left_ar < 0.01) then
-		md.left_ar = eye_w / eye_h;
+		md.left_ar = VRESW / VRESH;
 	end
 
 	if (md.right_ar < 0.01) then
-		md.right_ar = eye_w / eye_h;
+		md.right_ar = VRESW / VRESH;
 	end
 
 -- first set up a normal camera
@@ -526,6 +534,13 @@ local function build_vr_pipe(wnd, callback, opts, bridge, md, neck)
 -- image_tesselation (not too many subdivisions, maybe 30, 40 something
 	wnd.vr_state:set_distortion(md.distortion_model);
 	wnd.vr_state:relayout();
+
+	hmd_log(hmd_fmt(
+		"kind=build_pipe:headless=%s:" ..
+		"w=%d:h=%d:lfov=%.4f:rfov=%.4f:lar=%.4f:rar=%.4f:ipd=%.4f",
+		opts.headless and "yes" or "no",
+		dispw, disph, l_fov, r_fov, md.left_ar, md.right_ar,
+		wnd.scale_y, md.ipd));
 
 	if (not opts.headless) then
 		hmd_log("mapping HMD to camera");
@@ -992,7 +1007,7 @@ local function model_connpoint(model, name, kind, nosw)
 	end
 
 	if (not valid_vid(cp)) then
-		wm_log(string.format(
+		wm_log(wm_fmt(
 			"kind=error:name=%s:message=connection_point failure", name));
 		return;
 	end
